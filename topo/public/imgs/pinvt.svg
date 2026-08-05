@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="60" height="60">
+  <defs>
+    <linearGradient id="pinvtBody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a2236"/>
+      <stop offset="100%" stop-color="#0d1320"/>
+    </linearGradient>
+    <filter id="pinvtGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <!-- Body -->
+  <rect x="10" y="8" width="40" height="44" rx="2" fill="url(#pinvtBody)" stroke="#2d3b57" stroke-width="1.5"/>
+  <!-- Top label bar -->
+  <rect x="10" y="8" width="40" height="7" rx="2" fill="#0a0e1a" stroke="#2d3b57" stroke-width="1.5"/>
+  <text x="22" y="13.5" fill="#8b5cf6" font-family="monospace" font-size="5.5" font-weight="bold" filter="url(#pinvtGlow)">INV</text>
+  <!-- DC input (left, solar) -->
+  <g filter="url(#pinvtGlow)">
+    <line x1="6" y1="30" x2="16" y2="30" stroke="#ffb020" stroke-width="1.5"/>
+    <line x1="8" y1="27" x2="8" y2="33" stroke="#ffb020" stroke-width="1.5"/>
+    <line x1="12" y1="27" x2="12" y2="33" stroke="#ffb020" stroke-width="1.5"/>
+  </g>
+  <!-- Inverter triangle -->
+  <g filter="url(#pinvtGlow)">
+    <path d="M 16,22 L 16,38 L 32,30 Z" fill="none" stroke="#8b5cf6" stroke-width="1.5"/>
+  </g>
+  <!-- AC output (right) sine wave -->
+  <g filter="url(#pinvtGlow)">
+    <path d="M 32,30 Q 36,22 40,30 T 48,30" fill="none" stroke="#8b5cf6" stroke-width="1.5"/>
+    <line x1="48" y1="30" x2="54" y2="30" stroke="#8b5cf6" stroke-width="1.5"/>
+  </g>
+  <!-- Cooling fins -->
+  <line x1="14" y1="44" x2="20" y2="44" stroke="#2d3b57" stroke-width="0.8"/>
+  <line x1="22" y1="44" x2="28" y2="44" stroke="#2d3b57" stroke-width="0.8"/>
+  <line x1="30" y1="44" x2="36" y2="44" stroke="#2d3b57" stroke-width="0.8"/>
+  <line x1="38" y1="44" x2="44" y2="44" stroke="#2d3b57" stroke-width="0.8"/>
+  <!-- Status LED -->
+  <circle cx="44" cy="12" r="1.3" fill="#10d97a"/>
+  <circle cx="44" cy="12" r="2.2" fill="#10d97a" opacity="0.3"/>
+</svg>
