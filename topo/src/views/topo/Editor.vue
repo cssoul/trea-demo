@@ -125,7 +125,8 @@ const ctxMenu = reactive({
 // 撤销/重做
 const undoStack = ref([])
 const redoStack = ref([])
-const canUndo = computed(() => undoStack.value.length > 0)
+// undoStack 栈顶代表当前状态，至少需 2 个快照（初始 + 操作后）才能撤销
+const canUndo = computed(() => undoStack.value.length > 1)
 const canRedo = computed(() => redoStack.value.length > 0)
 const MAX_HISTORY = 50
 
@@ -222,21 +223,22 @@ function clearHistory() {
 }
 
 function undo() {
-  if (!undoStack.value.length) return
-  const current = snapshot()
+  if (undoStack.value.length <= 1) return
+  // 栈顶是当前状态：弹出后放入 redoStack
+  const current = undoStack.value.pop()
   redoStack.value.push(current)
-  const prev = undoStack.value.pop()
-  canvas.value.setData(prev)
+  // 新栈顶为操作前的状态，恢复它（深拷贝以免画布 mutate 污染历史快照）
+  const prev = undoStack.value[undoStack.value.length - 1]
+  canvas.value.setData(JSON.parse(JSON.stringify(prev)))
   dataBinder.value.setNodes(canvas.value.nodes)
   selectedNode.value = null
 }
 
 function redo() {
   if (!redoStack.value.length) return
-  const current = snapshot()
-  undoStack.value.push(current)
   const next = redoStack.value.pop()
-  canvas.value.setData(next)
+  undoStack.value.push(next)
+  canvas.value.setData(JSON.parse(JSON.stringify(next)))
   dataBinder.value.setNodes(canvas.value.nodes)
   selectedNode.value = null
 }
