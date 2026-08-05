@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="60" height="60">
+  <defs>
+    <linearGradient id="transformerBody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a2236"/>
+      <stop offset="100%" stop-color="#0d1320"/>
+    </linearGradient>
+    <filter id="txGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <!-- Body -->
+  <rect x="14" y="10" width="32" height="40" rx="2" fill="url(#transformerBody)" stroke="#2d3b57" stroke-width="1.5"/>
+  <!-- Top label -->
+  <rect x="14" y="10" width="32" height="6" rx="2" fill="#0a0e1a" stroke="#2d3b57" stroke-width="1.5"/>
+  <text x="22" y="14.5" fill="#ffb020" font-family="monospace" font-size="5" font-weight="bold" filter="url(#txGlow)">TR</text>
+  <!-- Two overlapping coils (transformer symbol) -->
+  <g filter="url(#txGlow)" transform="translate(30, 32)">
+    <circle cx="-5" cy="0" r="8" fill="none" stroke="#00d9ff" stroke-width="1.5"/>
+    <circle cx="5" cy="0" r="8" fill="none" stroke="#ffb020" stroke-width="1.5"/>
+  </g>
+  <!-- Input lines -->
+  <line x1="10" y1="32" x2="18" y2="32" stroke="#00d9ff" stroke-width="1.5"/>
+  <line x1="42" y1="32" x2="50" y2="32" stroke="#ffb020" stroke-width="1.5"/>
+  <!-- Status LED -->
+  <circle cx="40" cy="13" r="1.2" fill="#10d97a"/>
+</svg>

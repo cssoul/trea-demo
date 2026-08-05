@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="60" height="60">
+  <defs>
+    <linearGradient id="chargerBody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a2236"/>
+      <stop offset="100%" stop-color="#0d1320"/>
+    </linearGradient>
+    <filter id="chargerGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <!-- Pole body -->
+  <rect x="20" y="8" width="20" height="40" rx="2" fill="url(#chargerBody)" stroke="#2d3b57" stroke-width="1.5"/>
+  <!-- Screen -->
+  <rect x="23" y="11" width="14" height="9" rx="1" fill="#05080f" stroke="#1f2a40" stroke-width="0.5"/>
+  <text x="25" y="17.5" fill="#00d9ff" font-family="monospace" font-size="5" filter="url(#chargerGlow)">EV</text>
+  <!-- Lightning bolt -->
+  <g filter="url(#chargerGlow)">
+    <path d="M 31,24 L 27,32 L 30,32 L 28,40 L 34,30 L 31,30 Z" fill="#ffb020" stroke="none"/>
+  </g>
+  <!-- Base -->
+  <rect x="16" y="46" width="28" height="6" rx="1" fill="#0a0e1a" stroke="#2d3b57" stroke-width="1.5"/>
+  <!-- Cable hook -->
+  <path d="M 40,22 Q 46,22 46,28 Q 46,32 42,32" fill="none" stroke="#2d3b57" stroke-width="1.2"/>
+  <!-- Connector -->
+  <rect x="40" y="30" width="6" height="4" rx="1" fill="#1a2236" stroke="#2d3b57" stroke-width="0.8"/>
+  <!-- Status LED -->
+  <circle cx="36" cy="12" r="1.2" fill="#10d97a"/>
+  <circle cx="36" cy="12" r="2" fill="#10d97a" opacity="0.3"/>
+</svg>
