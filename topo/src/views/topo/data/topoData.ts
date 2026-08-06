@@ -89,7 +89,7 @@ export const topoGraphData: TopoGraphData = {
       text: '',
       icon: null,
       data: { deviceType: null, bindable: false, binding: null },
-      style: { fill: '#e70808', stroke: '#ed0707', strokeWidth: 1 },
+      style: { fill: '#ffffff', stroke: '#ffffff', strokeWidth: 1 },
       zIndex: 1,
       rotate: 270,
       initialWidth: 100,

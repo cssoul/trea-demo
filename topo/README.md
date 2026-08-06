@@ -1,5 +1,183 @@
-# Vue 3 + Vite
+# 储能拓扑编辑器 · TOPO
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+基于 **Vue 3 + Vite + D3.js + Ant Design Vue** 构建的储能系统拓扑图编辑与监控应用。支持在画布上自由拖拽、缩放、旋转、连线构建储能电站一次系统接线图，并可绑定真实设备实时数据，以动画方式展示充放电状态、SOC 荷电量与告警信息。
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+## 技术栈
+
+| 类别 | 技术 | 说明 |
+| ---- | ---- | ---- |
+| 框架 | Vue 3（`<script setup>`） | 渐进式前端框架 |
+| 构建 | Vite 5 | 开发服务器与打包 |
+| 路由 | Vue Router 4 | 使用 Hash 模式路由 |
+| 画布 | D3.js | SVG 拓扑图画布渲染与交互 |
+| UI | Ant Design Vue 4 | 表单、弹窗、按钮等组件 |
+| 状态 | Vue 响应式 + localStorage | 拓扑数据持久化 |
+
+## 快速开始
+
+```bash
+# 安装依赖
+npm install
+
+# 启动开发服务器（默认 http://localhost:5173）
+npm run dev
+
+# 生产构建
+npm run build
+
+# 预览生产构建
+npm run preview
+```
+
+## 项目结构
+
+```
+topo/
+├── index.html                 # HTML 入口，加载 Google Fonts 与图标
+├── vite.config.js             # Vite 配置，含 @ 别名与端口设置
+├── package.json               # 依赖与脚本
+└── src/
+    ├── main.js                # 应用入口，注册 Antd 与路由
+    ├── App.vue                # 根组件，仅渲染 router-view
+    ├── router/
+    │   └── index.js           # 路由配置（/topo/editor、/topo/viewer）
+    ├── styles/
+    │   └── global.css         # 全局主题变量、Antd 覆盖样式、动画
+    └── views/
+        └── topo/
+            ├── index.vue      # 顶层布局，子路由切换过渡
+            ├── Editor.vue     # 编辑模式页面
+            ├── Viewer.vue     # 查看模式页面（实时监控）
+            ├── components/    # UI 组件
+            │   ├── Toolbar.vue        # 顶部工具栏
+            │   ├── ComponentPanel.vue # 左侧组件库
+            │   ├── PropertyPanel.vue  # 右侧属性配置面板
+            │   └── ContextMenu.vue    # 右键菜单
+            ├── config/
+            │   └── nodeConfig.js      # 节点/连线类型配置与工厂函数
+            ├── core/
+            │   ├── TopoCanvas.js      # 拓扑图画布核心类（D3 渲染与交互）
+            │   ├── AnimationManager.js# 查看模式动画管理器
+            │   └── DataBinder.js      # 设备绑定管理
+            └── data/
+                ├── topoData.ts        # 默认拓扑图数据（节点 + 连线）
+                ├── deviceData.ts      # 设备列表（用于绑定）
+                └── realtimeData.ts    # 实时数据模拟器
+```
+
+## 功能概览
+
+### 双模式架构
+
+应用包含 **编辑模式** 与 **查看模式** 两个页面，通过顶部路由切换：
+
+- **编辑模式** `/topo/editor`：构建拓扑图，支持增删改节点与连线、设备绑定、样式调整、撤销/重做、保存。
+- **查看模式** `/topo/viewer`：只读展示，支持缩放平移、点击设备查看实时详情、实时动画渲染。
+
+### 编辑模式（Editor）
+
+编辑模式采用经典的「工具栏 + 左侧组件库 + 中间画布 + 右侧属性面板」布局：
+
+- **组件库**：从左侧拖拽或双击将节点添加到画布，节点分「基础元素」「储能设备」「发电与计量」三组。
+- **画布操作**：缩放、平移、自适应居中；节点可拖拽、等比缩放、旋转。
+- **选中框与句柄**：选中节点后出现绿色选中框（外包元素）。选中框、内容、4 角缩放方块与旋转句柄放置于**同一个旋转子组**，整体随元素一起旋转：
+  - **4 角缩放方块**（橙黄实心 + 白边）：拖动可**等比缩放**元素（x/y/宽/高 同步变化）。
+  - **旋转句柄**（元素上方青色虚线杆 + 实心圆点，内含 `↻` 图标）：鼠标移到圆点按住左键拖动，元素即**跟随鼠标相对于元素中心的角度整体旋转**，直线 + 圆点与元素保持固定距离（不随元素大小变化）。
+- **连线**：工具栏开启「连线模式」后，点击源节点连接点、拖拽到目标节点建立连线；支持直线、正交折线、曲线（可拖动控制点调节弧度）。
+- **属性面板**：
+  - 节点：修改名称、坐标、宽高、颜色等；**旋转角度仅以文字只读展示**（由画布旋转句柄控制）。
+  - 连线：**线条样式**（直线/折线/曲线）与**线型**（实线/虚线）通过**下拉菜单**选择；连线宽度由节点宽高属性控制，不单独设置。
+- **设备绑定**：可绑定节点到具体设备（电池堆/电池簇/PCS/光伏等），电池簇需先选择所属电池堆。已绑定设备不可重复关联。
+- **右键菜单**：复制、粘贴、克隆、置于顶层/底层、删除；点击菜单外任意位置自动关闭。
+- **快捷键**：`Ctrl+Z` 撤销、`Ctrl+Y` 重做、`Ctrl+S` 保存、`Ctrl+C`/`Ctrl+V` 复制粘贴、`Delete` 删除、`Esc` 取消。
+- **撤销/重做**：基于历史快照栈，最多保留 50 步。
+- **数据持久化**：拓扑图数据保存到 `localStorage`（`topo_data`），刷新后自动恢复。
+
+### 查看模式（Viewer）
+
+查看模式以深色科技风实时监控储能系统运行状态：
+
+- **顶部 KPI**：总功率、平均 SOC、在线设备数、告警数。
+- **实时动画**：由 `AnimationManager` 每 2.5 秒轮询一次实时数据驱动：
+  - 电池堆/电池簇节点显示 **SOC 进度条**（绿/黄/红三档）；
+  - 连线根据充放电状态显示 **流动动画**（青色=充电、琥珀色=放电）；
+  - 告警设备在**右上角**显示**闪烁的红圆点**（白色描边，尺寸随设备缩放等比变化，紧贴元素角点）；
+  - 节点右上角显示 **功率徽章**（如 `+120.0kW`）。
+- **设备详情**：点击节点弹出详情弹窗，展示 SOC、功率、电压、电流、温度与告警信息。
+- **图例**：说明充电流动、放电流动、SOC 进度、告警闪烁的视觉含义。
+- **缩放控制**：左下角提供放大、缩小、自适应按钮。
+
+## 核心模块说明
+
+### TopoCanvas（画布核心）
+
+`core/TopoCanvas.js` 是整套系统的核心，基于 D3.js 实现：
+
+- 创建 SVG 画布、网格背景（大小网格）、辉光滤镜。
+- 节点与连线的数据绑定渲染（`data-join` 模式，`enter`/`update`/`exit`）。
+- **节点 DOM 结构**：外层 `g`（translate 定位 + 水平文本标签）内含**旋转子组** `topo-node-rotator`（应用 rotate 变换），旋转子组内包含元素内容、选中框、告警红点、4 角缩放方块、旋转句柄——因此选中框与句柄始终与元素**整体同步旋转并包住元素**。
+- 节点拖拽（保持按下偏移，避免位置跳变）、4 角等比缩放、旋转句柄拖拽的 D3 drag 行为。
+- 连线模式（源节点点击连接点 → 鼠标移动绘制临时虚线 → 目标节点释放建立连线）。
+- 曲线控制点拖拽调整弧度。
+- 缩放/平移（D3 zoom），`fitView` 自适应居中。
+- 查看模式专用动画接口：`setNodeSoc`、`setNodeAlarm`（右上角闪烁红点）、`setNodeBadge`、`setLinkFlow`。
+- 事件系统（`on`/`emit`），向 Vue 层广播选中、拖拽、缩放、连线等事件。
+
+### AnimationManager（动画管理）
+
+`core/AnimationManager.js` 仅在查看模式使用，职责：
+
+- 构建 `nodeId -> deviceId` 映射。
+- 根据设备实时数据驱动 SOC 进度条、充放电流动动画、告警闪烁与功率徽章。
+- 内置轮询机制，周期性拉取实时数据并刷新画布动画。
+
+### DataBinder（设备绑定）
+
+`core/DataBinder.js` 负责节点与设备之间的绑定关系：
+
+- 计算已绑定设备集合，保证一个设备只关联一个节点。
+- 处理父子级联（电池簇必须归属于某个电池堆）。
+- 提供绑定、解绑、校验等 API。
+
+### 节点与连线类型
+
+节点类型配置于 `config/nodeConfig.js`，包含：
+
+- **基础元素**：母线（busbar）、直线（line）、文字（text）。母线默认比直线更粗（母线厚度 `18px`，直线 `2px`）。
+- **储能设备**：电池堆（stack）、电池簇（cluster）、PCS（pcs）。
+- **发电与计量**：光伏（pv）、逆变器（pinvt）、双向电表（meter）、断路器（breaker）、变压器（transformer）、充电桩（charger）。
+
+连线类型支持 **直线**、**正交折线**、**曲线** 三种。
+
+### 数据模拟
+
+`data/realtimeData.ts` 提供内置的实时数据模拟器，模拟电池堆/电池簇/PCS/光伏等设备的 SOC 升降、充放电切换、功率波动与偶发告警，用于查看模式演示真实运行效果。
+
+## 主题与视觉
+
+全局主题定义于 `src/styles/global.css`，采用深色「储能科技风」：
+
+- **主色**：青色 `#01efb6`（充电流动）、琥珀色 `#ffb020`（放电）、翠绿 `#04ce9e`（主按钮）。
+- **背景**：深海军蓝渐变，辅以发光边框与辉光投影。
+- **字体**：`Chakra Petch`（标题）、`IBM Plex Sans`（正文）、`IBM Plex Mono`（数字），由 Google Fonts 加载。
+- 内置 `flow-dash`（能量流动）、`blink-alarm`（告警闪烁）、`pulse-glow`（呼吸光效）等动画。
+
+## 路由说明
+
+| 路径 | 页面 | 说明 |
+| ---- | ---- | ---- |
+| `/` | - | 重定向到 `/topo/viewer` |
+| `/topo/viewer` | 查看模式 | 实时监控视图 |
+| `/topo/editor` | 编辑模式 | 拓扑图编辑视图 |
+
+路由采用 Hash 模式（`createWebHashHistory`），便于静态部署无需服务器重写。
+
+## 环境要求
+
+- Node.js 18+（建议使用 LTS 版本）
+- npm 或 pnpm / yarn
+
+## 注意事项
+
+- 拓扑数据默认来自 `data/topoData.ts`，用户编辑保存后优先读取 `localStorage` 中的 `topo_data`。
+- 实时数据目前为前端模拟器实现，接入真实设备时仅需替换 `realtimeData.ts` 中的 `getRealtimeData` 数据源。

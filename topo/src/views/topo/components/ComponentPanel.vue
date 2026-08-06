@@ -50,7 +50,7 @@ function onDragStart(event, key) {
 
 function placeholderStyle(key) {
   const c = config[key]
-  if (key === 'line') return { width: '28px', height: '3px', background: c.strokeColor, borderRadius: '1px' }
+  if (key === 'line') return { width: '28px', height: '1.5px', background: c.strokeColor, borderRadius: '1px' }
   if (key === 'text') return { width: '28px', height: '14px', background: 'transparent', border: '1px dashed var(--border-strong)', borderRadius: '2px' }
   return { width: '24px', height: '24px', background: c.strokeColor || 'var(--border-strong)', borderRadius: '2px' }
 }
@@ -137,7 +137,7 @@ function placeholderStyle(key) {
   background: var(--bg-elevated);
   border-color: var(--accent-cyan-dim);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 217, 255, 0.15);
+  box-shadow: 0 4px 12px rgba(1, 239, 182, 0.15);
 }
 
 .comp-item:active {
@@ -156,7 +156,7 @@ function placeholderStyle(key) {
 .comp-icon img {
   max-width: 100%;
   max-height: 100%;
-  filter: drop-shadow(0 0 4px rgba(0, 217, 255, 0.2));
+  filter: drop-shadow(0 0 4px rgba(1, 239, 182, 0.2));
 }
 
 .comp-placeholder {

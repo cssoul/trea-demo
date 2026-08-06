@@ -3,7 +3,7 @@
     <div class="toolbar-section brand">
       <div class="brand-mark">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <path d="M12 2L3 7v10l9 5 9-5V7l-9-5z" stroke="var(--accent-cyan)" stroke-width="1.5" fill="rgba(0,217,255,0.08)"/>
+          <path d="M12 2L3 7v10l9 5 9-5V7l-9-5z" stroke="var(--accent-cyan)" stroke-width="1.5" fill="rgba(1,239,182,0.08)"/>
           <path d="M12 2v20M3 7l9 5 9-5M3 17l9-5 9 5" stroke="var(--accent-cyan)" stroke-width="1" opacity="0.5"/>
         </svg>
       </div>
@@ -127,10 +127,10 @@ const zoomPct = computed(() => Math.round((props.zoom || 1) * 100))
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 217, 255, 0.08);
+  background: rgba(1, 239, 182, 0.08);
   border: 1px solid var(--accent-cyan-dim);
   border-radius: var(--radius-md);
-  filter: drop-shadow(0 0 6px rgba(0, 217, 255, 0.3));
+  filter: drop-shadow(0 0 6px rgba(1, 239, 182, 0.3));
 }
 
 .brand-text {
@@ -183,10 +183,10 @@ const zoomPct = computed(() => Math.round((props.zoom || 1) * 100))
 }
 
 .tbtn.active {
-  background: rgba(0, 217, 255, 0.15);
+  background: rgba(1, 239, 182, 0.15);
   border-color: var(--accent-cyan);
   color: var(--accent-cyan);
-  box-shadow: 0 0 8px rgba(0, 217, 255, 0.3);
+  box-shadow: 0 0 8px rgba(1, 239, 182, 0.3);
 }
 
 .tbtn.danger:hover:not(:disabled) {

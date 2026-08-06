@@ -220,6 +220,7 @@ export default class TopoCanvas {
   render() {
     this._renderLinks()
     this._renderNodes()
+    this._renderLinkHandles()
   }
 
   // ---- 节点中心点 ----
@@ -296,9 +297,15 @@ export default class TopoCanvas {
     merged
       .select('.topo-link-line')
       .attr('d', (d) => this._linkPath(d))
-      .attr('stroke', (d) => (d.style && d.style.stroke) || '#666')
+      .attr('stroke', (d) => {
+        if (d.id === this.selectedLinkId) return 'var(--accent-cyan)'
+        return (d.style && d.style.stroke) || '#666'
+      })
       .attr('stroke-width', (d) => (d.style && d.style.strokeWidth) || 2)
-      .attr('stroke-dasharray', (d) => (d.style && d.style.dasharray) || null)
+      .attr('stroke-dasharray', (d) => {
+        const da = d.style && d.style.dasharray
+        return da && da !== '' ? da : null
+      })
 
     merged
       .select('.topo-link-flow')
@@ -310,12 +317,6 @@ export default class TopoCanvas {
 
     // 选中态
     merged.classed('selected', (d) => d.id === this.selectedLinkId)
-    merged
-      .select('.topo-link-line')
-      .attr('stroke', (d) => {
-        if (d.id === this.selectedLinkId) return 'var(--accent-cyan)'
-        return (d.style && d.style.stroke) || '#666'
-      })
   }
 
   // ---- 节点渲染 ----
@@ -329,24 +330,7 @@ export default class TopoCanvas {
       .attr('class', 'topo-node')
       .style('cursor', this.readonly ? 'pointer' : 'move')
 
-    // 选中框（底层）
-    enter.append('rect').attr('class', 'topo-node-selection').attr('fill', 'none').attr('stroke', 'var(--accent-cyan)').attr('stroke-width', 1.5).attr('stroke-dasharray', '4 3').attr('opacity', 0)
-
-    // 告警光环
-    enter.append('rect').attr('class', 'topo-node-alarm').attr('fill', 'none').attr('stroke', 'var(--accent-danger)').attr('stroke-width', 2).attr('rx', 4).attr('opacity', 0)
-
-    // 节点主内容容器
-    const content = enter.append('g').attr('class', 'topo-node-content')
-
-    // 不同类型节点的渲染
-    content.each(function (d) {
-      const g = d3.select(this)
-      const canvas = this.__canvas_ref__
-      // 由 _renderNodeContent 处理
-      void canvas
-    })
-
-    // 文本标签
+    // 文本标签（line/busbar/text 不显示），放在外层（不参与旋转）
     enter
       .append('text')
       .attr('class', 'topo-node-label')
@@ -358,70 +342,145 @@ export default class TopoCanvas {
       .style('pointer-events', 'none')
       .style('user-select', 'none')
 
-    // 缩放手柄（仅编辑模式）
+    // 旋转子组：内容、选中框、告警框、缩放手柄都放在这里，整体一起旋转
+    enter.append('g').attr('class', 'topo-node-rotator')
+
+    // 外层旋转句柄组（杆子 + 圆点），不跟随元素旋转，位置根据当前旋转角度计算，始终指向鼠标方向
     if (!this.readonly) {
-      const handles = enter.append('g').attr('class', 'topo-node-handles').style('opacity', 0)
-      ;['nw', 'ne', 'sw', 'se'].forEach((pos) => {
-        handles
-          .append('rect')
-          .attr('class', `topo-handle topo-handle-${pos}`)
-          .attr('width', 8)
-          .attr('height', 8)
-          .attr('fill', 'var(--bg-deep)')
-          .attr('stroke', 'var(--accent-cyan)')
-          .attr('stroke-width', 1.5)
-          .style('cursor', this._handleCursor(pos))
-      })
+      const rotHandleG = enter.append('g').attr('class', 'topo-rot-handles').style('opacity', 0)
+      // 旋转杆（直线）
+      rotHandleG
+        .append('line')
+        .attr('class', 'topo-rot-line')
+        .attr('stroke', 'var(--accent-cyan)')
+        .attr('stroke-width', 1.5)
+        .attr('stroke-dasharray', '3 2')
+        .attr('opacity', 0.6)
+        .style('pointer-events', 'none')
+      // 旋转圆点
+      rotHandleG
+        .append('circle')
+        .attr('class', 'topo-handle topo-handle-rotate')
+        .attr('r', 7)
+        .attr('fill', 'var(--accent-cyan)')
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 1.5)
+        .style('cursor', 'grab')
+        .style('filter', 'drop-shadow(0 0 4px var(--accent-cyan-glow))')
+      // 圆点内旋转图标
+      rotHandleG
+        .append('text')
+        .attr('class', 'topo-rot-icon')
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'central')
+        .attr('font-size', 9)
+        .attr('fill', '#0a1428')
+        .style('font-weight', 700)
+        .style('pointer-events', 'none')
+        .style('user-select', 'none')
+        .text('↻')
     }
 
     const merged = enter.merge(sel)
 
-    // 更新位置/变换
+    // 更新外层位置
     merged.attr('transform', (d) => `translate(${d.x}, ${d.y})`)
 
-    // 渲染每个节点的内容
-    merged.each((d, i, nodes) => {
-      this._renderNodeContent(d3.select(nodes[i]).select('.topo-node-content'), d)
-    })
-
-    // 选中框
-    merged
-      .select('.topo-node-selection')
-      .attr('x', (d) => -4)
-      .attr('y', (d) => -4)
-      .attr('width', (d) => d.width + 8)
-      .attr('height', (d) => d.height + 8)
-      .attr('rx', 4)
-      .attr('opacity', (d) => (d.id === this.selectedNodeId ? 1 : 0))
-
-    // 告警框
-    merged
-      .select('.topo-node-alarm')
-      .attr('x', (d) => -2)
-      .attr('y', (d) => -2)
-      .attr('width', (d) => d.width + 4)
-      .attr('height', (d) => d.height + 4)
-
-    // 标签位置
+    // 标签：line/busbar/text 不显示文本，放外层保持水平
+    const HIDE_LABEL_TYPES = ['line', 'busbar', 'text']
     merged
       .select('.topo-node-label')
-      .text((d) => d.text || '')
+      .text((d) => (HIDE_LABEL_TYPES.includes(d.type) ? '' : d.text || ''))
       .attr('x', (d) => d.width / 2)
       .attr('y', (d) => d.height + 16)
 
-    // 缩放手柄
-    if (!this.readonly) {
-      merged
-        .select('.topo-node-handles')
-        .style('opacity', (d) => (d.id === this.selectedNodeId ? 1 : 0))
-      merged.each((d, i, nodes) => {
-        const g = d3.select(nodes[i]).select('.topo-node-handles')
-        g.select('.topo-handle-nw').attr('x', -4).attr('y', -4)
-        g.select('.topo-handle-ne').attr('x', d.width - 4).attr('y', -4)
-        g.select('.topo-handle-sw').attr('x', -4).attr('y', d.height - 4)
-        g.select('.topo-handle-se').attr('x', d.width - 4).attr('y', d.height - 4)
-      })
-    }
+    // 旋转子组渲染内容、选中框、告警框、手柄
+    merged.each((d, i, nodes) => {
+      const nodeG = d3.select(nodes[i])
+      const rotatorG = nodeG.select('.topo-node-rotator')
+
+      // 内容组（首次进入时不存在才创建）
+      let contentG = rotatorG.select('.topo-node-content')
+      if (contentG.empty()) {
+        contentG = rotatorG.append('g').attr('class', 'topo-node-content')
+      }
+      this._renderNodeContent(contentG, d)
+      // 选中框（首次进入时创建）
+      let selectionG = rotatorG.select('.topo-node-selection')
+      if (selectionG.empty()) {
+        selectionG = rotatorG
+          .append('rect')
+          .attr('class', 'topo-node-selection')
+          .attr('fill', 'none')
+          .attr('stroke', 'var(--accent-emerald)')
+          .attr('stroke-width', 1.5)
+          .attr('opacity', 0)
+      }
+      // 告警指示（右上角闪烁图标，使用 alarm.png 图片）
+      let alarmG = rotatorG.select('.topo-node-alarm')
+      if (alarmG.empty()) {
+        alarmG = rotatorG
+          .append('image')
+          .attr('class', 'topo-node-alarm')
+          .attr('href', '/imgs/alarm.png')
+          .attr('preserveAspectRatio', 'xMidYMid meet')
+          .attr('opacity', 0)
+      }
+
+      // 应用旋转（围绕节点中心）
+      const angle = d.rotate || 0
+      rotatorG.attr('transform', `rotate(${angle} ${d.width / 2} ${d.height / 2})`)
+
+      // 选中框尺寸 + 位置（-4 边距包住元素）
+      selectionG
+        .attr('x', -4)
+        .attr('y', -4)
+        .attr('width', d.width + 8)
+        .attr('height', d.height + 8)
+        .attr('rx', 4)
+        .attr('opacity', d.id === this.selectedNodeId ? 1 : 0)
+
+      // 告警图标
+      const alarmSize = Math.max(24, Math.min(40, Math.min(d.width, d.height) * 0.4))
+      alarmG
+        .attr('width', alarmSize)
+        .attr('height', alarmSize)
+        .attr('x', d.width / 2)
+        .attr('y', d.height / 2 - alarmSize)
+
+      // 4 角缩放手柄（放在旋转子组内跟随元素一起旋转）
+      if (!this.readonly) {
+        let handlesG = rotatorG.select('.topo-node-handles')
+        if (handlesG.empty()) {
+          handlesG = rotatorG.append('g').attr('class', 'topo-node-handles').style('opacity', 0)
+          ;['nw', 'ne', 'sw', 'se'].forEach((pos) => {
+            handlesG
+              .append('rect')
+              .attr('class', `topo-handle topo-handle-${pos}`)
+              .attr('width', 8)
+              .attr('height', 8)
+              .attr('fill', 'var(--accent-amber)')
+              .attr('stroke', '#fff')
+              .attr('stroke-width', 1)
+              .style('cursor', this._handleCursor(pos))
+          })
+        }
+        // 仅选中时显示并启用手柄；未选中时禁用 pointer-events
+        const isSelected = d.id === this.selectedNodeId
+        handlesG.style('opacity', isSelected ? 1 : 0)
+        handlesG.style('pointer-events', isSelected ? 'all' : 'none')
+        // 4 角缩放手柄位置：贴在选中框四个角
+        handlesG.select('.topo-handle-nw').attr('x', -8).attr('y', -8)
+        handlesG.select('.topo-handle-ne').attr('x', d.width - 0).attr('y', -8)
+        handlesG.select('.topo-handle-sw').attr('x', -8).attr('y', d.height - 0)
+        handlesG.select('.topo-handle-se').attr('x', d.width - 0).attr('y', d.height - 0)
+      }
+
+      // 外层旋转句柄位置：杆子 + 圆点始终指向当前旋转角度方向，跟随鼠标，避免旋转时闪烁
+      if (!this.readonly) {
+        this._updateRotHandle(nodeG, d)
+      }
+    })
 
     // 绑定事件
     if (!this.readonly) {
@@ -438,9 +497,9 @@ export default class TopoCanvas {
         })
         .call(this._nodeDragBehavior())
       // 缩放手柄拖拽
-      if (!this.readonly) {
-        merged.selectAll('.topo-handle').call(this._resizeBehavior())
-      }
+      merged.selectAll('.topo-handle-nw, .topo-handle-ne, .topo-handle-sw, .topo-handle-se').call(this._resizeBehavior())
+      // 旋转句柄（上方圆点）拖拽旋转
+      merged.selectAll('.topo-handle-rotate').call(this._rotateBehavior())
     } else {
       merged.on('click', (event, d) => {
         event.stopPropagation()
@@ -448,30 +507,57 @@ export default class TopoCanvas {
       })
     }
 
-    // 连线模式下显示连接点
-    merged.select('.topo-link-point').remove()
-    if (this.linkMode) {
-      merged
-        .append('circle')
-        .attr('class', 'topo-link-point')
-        .attr('cx', (d) => d.width / 2)
-        .attr('cy', (d) => d.height / 2)
-        .attr('r', 6)
-        .attr('fill', 'var(--accent-cyan)')
-        .attr('stroke', '#fff')
-        .attr('stroke-width', 1.5)
-        .style('cursor', 'crosshair')
-        .style('filter', 'drop-shadow(0 0 6px var(--accent-cyan-glow))')
-        .style('opacity', (d) => (d.id === this.linkSourceId ? 1 : 0.6))
-        .on('click', (event, d) => {
-          event.stopPropagation()
-          this._startLinkFrom(d.id)
-        })
-    }
+    // 连线模式下显示连接点（位于旋转子组内，跟随节点一起旋转）
+    merged.each((d, i, nodes) => {
+      const rotatorG = d3.select(nodes[i]).select('.topo-node-rotator')
+      rotatorG.selectAll('.topo-link-point').remove()
+      if (this.linkMode) {
+        rotatorG
+          .append('circle')
+          .attr('class', 'topo-link-point')
+          .attr('cx', d.width / 2)
+          .attr('cy', d.height / 2)
+          .attr('r', 6)
+          .attr('fill', 'var(--accent-cyan)')
+          .attr('stroke', '#fff')
+          .attr('stroke-width', 1.5)
+          .style('cursor', 'crosshair')
+          .style('filter', 'drop-shadow(0 0 6px var(--accent-cyan-glow))')
+          .style('opacity', d.id === this.linkSourceId ? 1 : 0.6)
+          .on('click', (event, dd) => {
+            event.stopPropagation()
+            this._startLinkFrom(dd.id)
+          })
+      }
+    })
   }
 
   _handleCursor(pos) {
     return { nw: 'nwse-resize', ne: 'nesw-resize', sw: 'nesw-resize', se: 'nwse-resize' }[pos]
+  }
+
+  /**
+   * 更新外层旋转句柄（杆子 + 圆点）的位置。
+   * 圆点沿元素中心按当前旋转角度方向放置（始终指向鼠标），距离固定，
+   * 从而避免旋转时圆点被旋转子组带着一起转导致的抖动/闪烁。
+   * @param {d3.Selection} nodeG 外层 g（topo-node，已 translate 到节点左上角）
+   * @param {Object} d 节点数据
+   */
+  _updateRotHandle(nodeG, d) {
+    const rotHandleG = nodeG.select('.topo-rot-handles')
+    rotHandleG.style('opacity', d.id === this.selectedNodeId ? 1 : 0)
+    const ROT_RADIUS = Math.max(d.width, d.height) / 2 + 28 // 圆点到元素中心的固定距离（随元素大小微调，保证在元素外）
+    const theta = ((d.rotate || 0) * Math.PI) / 180
+    // 元素中心局部坐标
+    const cx = d.width / 2
+    const cy = d.height / 2
+    // 0°=顶部(-y)，顺时针：x 偏移 +R*sin，y 偏移 -R*cos
+    const hx = cx + ROT_RADIUS * Math.sin(theta)
+    const hy = cy - ROT_RADIUS * Math.cos(theta)
+    rotHandleG.select('.topo-handle-rotate').attr('cx', hx).attr('cy', hy)
+    rotHandleG.select('.topo-rot-icon').attr('x', hx).attr('y', hy + 0.5)
+    // 杆子：从元素中心到圆点
+    rotHandleG.select('.topo-rot-line').attr('x1', cx).attr('y1', cy).attr('x2', hx).attr('y2', hy)
   }
 
   // ---- 单个节点内容渲染 ----
@@ -480,49 +566,37 @@ export default class TopoCanvas {
     const type = node.type
 
     if (type === 'busbar') {
-      // 母线：渐变粗矩形
-      const gradId = `busbar-grad-${node.id}`
-      const defs = this.svg.select('defs')
-      let grad = defs.select(`#${gradId}`)
-      if (grad.empty()) {
-        grad = defs
-          .append('linearGradient')
-          .attr('id', gradId)
-          .attr('x1', '0')
-          .attr('y1', '0')
-          .attr('x2', '0')
-          .attr('y2', '1')
-        grad.append('stop').attr('offset', '0%').attr('stop-color', '#3d4a66')
-        grad.append('stop').attr('offset', '50%').attr('stop-color', '#7a8aaa')
-        grad.append('stop').attr('offset', '100%').attr('stop-color', '#1f2a40')
-      }
+      // 母线：默认白色实心矩形，颜色可由 style.stroke 配置
+      const color = (node.style && node.style.stroke) || '#ffffff'
       selection
         .append('rect')
         .attr('width', node.width)
         .attr('height', node.height)
         .attr('rx', 1)
-        .attr('fill', `url(#${gradId})`)
-        .attr('stroke', '#2d3b57')
+        .attr('fill', color)
+        .attr('stroke', color)
         .attr('stroke-width', 0.5)
-      // 高光
+      // 顶部细微高光
       selection
         .append('rect')
-        .attr('y', node.height * 0.25)
+        .attr('y', node.height * 0.2)
         .attr('width', node.width)
-        .attr('height', 1)
-        .attr('fill', '#aabbdd')
-        .attr('opacity', 0.5)
+        .attr('height', Math.max(1, node.height * 0.15))
+        .attr('fill', '#ffffff')
+        .attr('opacity', 0.25)
       return
     }
 
     if (type === 'line') {
+      // 直线：默认白色实心矩形，颜色可由 style.stroke 配置
+      const color = (node.style && node.style.stroke) || '#ffffff'
       selection
         .append('rect')
         .attr('width', node.width)
         .attr('height', node.height)
-        .attr('fill', (node.style && node.style.fill) || '#e70808')
-        .attr('stroke', (node.style && node.style.stroke) || '#ed0707')
-        .attr('stroke-width', (node.style && node.style.strokeWidth) || 1)
+        .attr('fill', color)
+        .attr('stroke', color)
+        .attr('stroke-width', 0.5)
       return
     }
 
@@ -551,11 +625,7 @@ export default class TopoCanvas {
         .attr('width', node.width)
         .attr('height', node.height)
         .attr('preserveAspectRatio', 'xMidYMid meet')
-
-      // 旋转
-      if (node.rotate) {
-        img.attr('transform', `rotate(${node.rotate} ${node.width / 2} ${node.height / 2})`)
-      }
+      // 旋转统一由内容组应用
       img.style('cursor', this.readonly ? 'pointer' : 'move')
     }
 
@@ -576,6 +646,7 @@ export default class TopoCanvas {
     this.selectedLinkId = null
     this._renderNodes()
     this._renderLinks()
+    this._renderLinkHandles()
     const node = this.getNode(id)
     this.emit('select', { type: 'node', node })
   }
@@ -585,6 +656,7 @@ export default class TopoCanvas {
     this.selectedNodeId = null
     this._renderNodes()
     this._renderLinks()
+    this._renderLinkHandles()
     const link = this.getLink(id)
     this.emit('select', { type: 'link', link })
   }
@@ -594,11 +666,15 @@ export default class TopoCanvas {
     this.selectedLinkId = null
     this._renderNodes()
     this._renderLinks()
+    this._renderLinkHandles()
     this.emit('select', { type: 'none' })
   }
 
   selectNode(id) {
     this._selectNode(id)
+  }
+  selectLink(id) {
+    this._selectLink(id)
   }
 
   // ============ 节点拖拽 ============
@@ -609,16 +685,25 @@ export default class TopoCanvas {
       .on('start', function (event, d) {
         if (self.linkMode) return // 连线模式下不拖拽节点
         d3.select(this).raise()
-        self._dragStart = { x: d.x, y: d.y }
+        // event.x/event.y 是父级（zoomG）坐标系下的鼠标位置
+        // 记录鼠标按下时在节点内的偏移，避免松手后位置跳变
+        self._dragStart = {
+          x: d.x,
+          y: d.y,
+          offsetX: event.x - d.x,
+          offsetY: event.y - d.y
+        }
         self.emit('nodeDragStart', { node: d })
       })
       .on('drag', function (event, d) {
         if (self.linkMode) return
-        d.x = event.x - d.width / 2
-        d.y = event.y - d.height / 2
+        d.x = event.x - self._dragStart.offsetX
+        d.y = event.y - self._dragStart.offsetY
         d3.select(this).attr('transform', `translate(${d.x}, ${d.y})`)
         // 同步更新相连的连线
         self._updateLinksForNode(d.id)
+        // 实时通知面板
+        self.emit('nodeDrag', { node: d })
       })
       .on('end', function (event, d) {
         if (self.linkMode) return
@@ -638,6 +723,10 @@ export default class TopoCanvas {
       g.select('.topo-link-line').attr('d', path)
       g.select('.topo-link-flow').attr('d', path)
     })
+    // 若被影响的是当前选中的曲线，刷新曲线句柄
+    if (this.selectedLinkId && affected.some((l) => l.id === this.selectedLinkId)) {
+      this._renderLinkHandles()
+    }
   }
 
   // ============ 缩放手柄 ============
@@ -652,6 +741,9 @@ export default class TopoCanvas {
           y: d.y,
           width: d.width,
           height: d.height,
+          // 记录鼠标按下时父级坐标位置
+          startMx: event.x,
+          startMy: event.y,
           handle: d3.select(this).attr('class').split(' ').pop().replace('topo-handle-', '')
         }
       })
@@ -659,8 +751,9 @@ export default class TopoCanvas {
         event.sourceEvent.stopPropagation()
         const s = self._resizeStart
         let { x, y, width, height } = s
-        const dx = event.x - s.x - s.width / 2
-        const dy = event.y - s.y - s.height / 2
+        // 鼠标在父级坐标系下相对于拖拽起点的位移
+        const dx = event.x - s.startMx
+        const dy = event.y - s.startMy
         if (s.handle.includes('e')) width = Math.max(20, s.width + dx)
         if (s.handle.includes('s')) height = Math.max(20, s.height + dy)
         if (s.handle.includes('w')) {
@@ -688,10 +781,46 @@ export default class TopoCanvas {
         d.height = height
         self._renderNodes()
         self._updateLinksForNode(d.id)
+        // 实时通知面板
+        self.emit('nodeResize', { node: d })
       })
       .on('end', function (event, d) {
         event.sourceEvent.stopPropagation()
-        self.emit('nodeResize', { node: d, start: self._resizeStart })
+        self.emit('nodeResizeEnd', { node: d, start: self._resizeStart })
+      })
+  }
+
+  // ============ 旋转手柄（外层圆点拖动，元素跟随鼠标角度旋转） ============
+  _rotateBehavior() {
+    const self = this
+    return d3
+      .drag()
+      .on('start', function (event) {
+        event.sourceEvent.stopPropagation()
+        d3.select(this.parentNode).raise()
+      })
+      .on('drag', function (event, d) {
+        event.sourceEvent.stopPropagation()
+        const cx = d.x + d.width / 2
+        const cy = d.y + d.height / 2
+        // 鼠标相对节点中心的角度，顶部为 0°，顺时针为正
+        let angle = (Math.atan2(event.y - cy, event.x - cx) * 180) / Math.PI + 90
+        angle = (angle + 360) % 360
+        d.rotate = angle
+        // 圆点位于外层 topo-rot-handles，其父节点是 topo-node（已 translate），再查其内的 rotator
+        const nodeG = d3.select(this.parentNode.parentNode)
+        const rotatorG = nodeG.select('.topo-node-rotator')
+        if (!rotatorG.empty()) {
+          rotatorG.attr('transform', `rotate(${angle} ${d.width / 2} ${d.height / 2})`)
+        }
+        // 同步更新外层旋转句柄位置，让圆点始终指向鼠标方向
+        self._updateRotHandle(nodeG, d)
+        // 实时通知面板
+        self.emit('nodeRotate', { node: d })
+      })
+      .on('end', function (event, d) {
+        event.sourceEvent.stopPropagation()
+        self.emit('nodeRotateEnd', { node: d })
       })
   }
 
@@ -721,11 +850,15 @@ export default class TopoCanvas {
         node[key] = patch[key]
       }
     })
+    // 旋转角度归一化
+    if (patch.rotate != null) {
+      node.rotate = ((Number(patch.rotate) || 0) + 360) % 360
+    }
     this._renderNodes()
     this._updateLinksForNode(id)
   }
 
-  // ============ 连线增删 ============
+  // ============ 连线增删改 ============
   addLink(link) {
     this.links.push(link)
     this._renderLinks()
@@ -737,7 +870,115 @@ export default class TopoCanvas {
     this.links = this.links.filter((l) => l.id !== id)
     if (this.selectedLinkId === id) this.selectedLinkId = null
     this._renderLinks()
+    this._renderLinkHandles()
     this.emit('linkRemoved', { id })
+  }
+
+  updateLink(linkId, patch) {
+    const link = this.getLink(linkId)
+    if (!link) return
+    // 切换为曲线时，若没有控制点，给一个默认值
+    if (patch.type === 'curve' && (!link.data || !link.data.controlPoint)) {
+      const cp = this._defaultControlPoint(link)
+      link.data = { ...(link.data || {}), controlPoint: cp }
+    }
+    // 切换为非曲线时，移除控制点句柄
+    if (patch.type && patch.type !== 'curve') {
+      this._renderLinkHandles()
+    }
+    Object.keys(patch).forEach((key) => {
+      if (key === 'style' || key === 'data') {
+        link[key] = { ...(link[key] || {}), ...patch[key] }
+      } else {
+        link[key] = patch[key]
+      }
+    })
+    this._renderLinks()
+    this._renderLinkHandles()
+  }
+
+  // ---- 默认控制点（用于曲线） ----
+  _defaultControlPoint(link) {
+    const s = this.getNode(link.source)
+    const t = this.getNode(link.target)
+    if (!s || !t) return { x: 0, y: 0 }
+    const sc = this._nodeCenter(s)
+    const tc = this._nodeCenter(t)
+    return { x: (sc.x + tc.x) / 2, y: Math.min(sc.y, tc.y) - 60 }
+  }
+
+  // ---- 单条连线 path 刷新 ----
+  _updateLinkPath(linkId) {
+    const link = this.getLink(linkId)
+    if (!link) return
+    const sel = this.linksG.selectAll('g.topo-link').filter((d) => d.id === linkId)
+    const path = this._linkPath(link)
+    sel.select('.topo-link-hit').attr('d', path)
+    sel.select('.topo-link-line').attr('d', path)
+    sel.select('.topo-link-flow').attr('d', path)
+  }
+
+  // ---- 曲线弧度句柄 ----
+  _renderLinkHandles() {
+    this.linksG.selectAll('.topo-curve-handle').remove()
+    if (this.readonly) return
+    if (!this.selectedLinkId) return
+    const link = this.getLink(this.selectedLinkId)
+    if (!link || link.type !== 'curve') return
+    const cp = (link.data && link.data.controlPoint) || this._defaultControlPoint(link)
+    if (!link.data) link.data = {}
+    if (!link.data.controlPoint) link.data.controlPoint = { ...cp }
+
+    const g = this.linksG.append('g').attr('class', 'topo-curve-handle').style('pointer-events', 'all')
+    // 控制点与端点的虚线指引
+    const s = this.getNode(link.source)
+    const t = this.getNode(link.target)
+    if (s && t) {
+      const sc = this._nodeCenter(s)
+      const tc = this._nodeCenter(t)
+      g.append('line').attr('class', 'topo-curve-guide').attr('x1', sc.x).attr('y1', sc.y).attr('x2', cp.x).attr('y2', cp.y).attr('stroke', 'var(--accent-cyan)').attr('stroke-width', 1).attr('stroke-dasharray', '3 2').attr('opacity', 0.4).style('pointer-events', 'none')
+      g.append('line').attr('class', 'topo-curve-guide').attr('x1', tc.x).attr('y1', tc.y).attr('x2', cp.x).attr('y2', cp.y).attr('stroke', 'var(--accent-cyan)').attr('stroke-width', 1).attr('stroke-dasharray', '3 2').attr('opacity', 0.4).style('pointer-events', 'none')
+    }
+    // 可拖拽控制点
+    g
+      .append('circle')
+      .attr('class', 'topo-curve-handle-pt')
+      .attr('cx', cp.x)
+      .attr('cy', cp.y)
+      .attr('r', 6)
+      .attr('fill', 'var(--bg-deep)')
+      .attr('stroke', 'var(--accent-cyan)')
+      .attr('stroke-width', 1.5)
+      .style('cursor', 'move')
+      .style('filter', 'drop-shadow(0 0 5px var(--accent-cyan-glow))')
+      .call(this._curveHandleDrag())
+  }
+
+  _curveHandleDrag() {
+    const self = this
+    return d3
+      .drag()
+      .on('start', function (event) {
+        event.sourceEvent.stopPropagation()
+      })
+      .on('drag', function (event) {
+        const link = self.getLink(self.selectedLinkId)
+        if (!link) return
+        if (!link.data) link.data = {}
+        link.data.controlPoint = { x: event.x, y: event.y }
+        d3.select(this).attr('cx', event.x).attr('cy', event.y)
+        // 更新指引线
+        const pg = d3.select(this.parentNode)
+        pg.selectAll('.topo-curve-guide').each(function (_, i) {
+          const line = d3.select(this)
+          line.attr('x2', event.x).attr('y2', event.y)
+          void i
+        })
+        self._updateLinkPath(link.id)
+      })
+      .on('end', function () {
+        self.emit('linkCurveEnd', {})
+      })
   }
 
   // ============ 连线模式 ============

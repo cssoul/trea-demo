@@ -4,7 +4,7 @@
       :can-undo="canUndo"
       :can-redo="canRedo"
       :link-mode="linkMode"
-      :has-selection="!!selectedNode"
+      :has-selection="!!selectedNode || !!selectedLink"
       :zoom="zoom"
       @undo="undo"
       @redo="redo"
@@ -66,12 +66,14 @@
         <div v-show="rightOpen" class="right-inner">
           <PropertyPanel
             :node="selectedNode"
+            :link="selectedLink"
             :device-list="deviceList"
             :bound-device-ids="boundDeviceIds"
             @change="onNodeChange"
             @style-change="onStyleChange"
             @bind="onBindDevice"
             @unbind="onUnbindDevice"
+            @link-change="onLinkChange"
           />
         </div>
       </aside>
@@ -109,6 +111,7 @@ const canvas = ref(null)
 const dataBinder = ref(null)
 
 const selectedNode = ref(null)
+const selectedLink = ref(null)
 const linkMode = ref(false)
 const zoom = ref(1)
 const leftOpen = ref(true)
@@ -180,8 +183,9 @@ function loadInitialData() {
 }
 
 function bindCanvasEvents() {
-  canvas.value.on('select', ({ type, node }) => {
+  canvas.value.on('select', ({ type, node, link }) => {
     selectedNode.value = type === 'node' ? node : null
+    selectedLink.value = type === 'link' ? link : null
   })
   canvas.value.on('contextmenu', ({ event, node, x, y }) => {
     ctxMenu.visible = true
@@ -189,13 +193,29 @@ function bindCanvasEvents() {
     ctxMenu.y = event.clientY
     ctxMenu.node = node
   })
+  // 画布 → 面板：实时回写
+  const syncSelected = (node) => {
+    if (selectedNode.value && selectedNode.value.id === node.id) {
+      selectedNode.value = { ...node }
+    }
+  }
+  canvas.value.on('nodeDrag', ({ node }) => syncSelected(node))
+  canvas.value.on('nodeResize', ({ node }) => syncSelected(node))
+  canvas.value.on('nodeRotate', ({ node }) => syncSelected(node))
+  // 操作结束：入栈
   canvas.value.on('nodeDragEnd', () => {
     pushHistory()
   })
-  canvas.value.on('nodeResize', () => {
+  canvas.value.on('nodeResizeEnd', () => {
+    pushHistory()
+  })
+  canvas.value.on('nodeRotateEnd', () => {
     pushHistory()
   })
   canvas.value.on('linkAdded', () => {
+    pushHistory()
+  })
+  canvas.value.on('linkCurveEnd', () => {
     pushHistory()
   })
   canvas.value.on('zoom', ({ transform }) => {
@@ -277,6 +297,10 @@ function deleteSelected() {
     selectedNode.value = null
     dataBinder.value.setNodes(canvas.value.nodes)
     pushHistory()
+  } else if (selectedLink.value) {
+    canvas.value.removeLink(selectedLink.value.id)
+    selectedLink.value = null
+    pushHistory()
   }
 }
 
@@ -294,6 +318,18 @@ function onStyleChange({ nodeId, key, value }) {
   canvas.value.updateNode(nodeId, { style: newStyle })
   const n = canvas.value.getNode(nodeId)
   if (n) selectedNode.value = { ...n }
+  pushHistory()
+}
+
+// ============ 连线属性 ============
+function onLinkChange({ linkId, key, value }) {
+  if (key === 'style') {
+    canvas.value.updateLink(linkId, { style: value })
+  } else {
+    canvas.value.updateLink(linkId, { [key]: value })
+  }
+  const l = canvas.value.getLink(linkId)
+  if (l) selectedLink.value = { ...l }
   pushHistory()
 }
 
@@ -404,7 +440,7 @@ function onKeydown(e) {
     message.success('已复制')
   } else if (isMod && e.key === 'v' && clipboard.value) {
     onContextAction('paste')
-  } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedNode.value) {
+  } else if ((e.key === 'Delete' || e.key === 'Backspace') && (selectedNode.value || selectedLink.value)) {
     // 避免在输入框中删除
     const tag = e.target && e.target.tagName
     if (tag === 'INPUT' || tag === 'TEXTAREA') return
@@ -543,7 +579,7 @@ function onKeydown(e) {
   flex-direction: column;
   gap: 2px;
   padding: 6px 10px;
-  background: rgba(13, 19, 32, 0.85);
+  background: rgba(2, 22, 51, 0.85);
   border: 1px solid var(--border-line);
   border-radius: var(--radius-sm);
   backdrop-filter: blur(8px);
@@ -567,13 +603,13 @@ function onKeydown(e) {
   align-items: center;
   gap: 8px;
   padding: 8px 14px;
-  background: rgba(0, 217, 255, 0.12);
+  background: rgba(1, 239, 182, 0.12);
   border: 1px solid var(--accent-cyan);
   border-radius: var(--radius-md);
   color: var(--accent-cyan);
   font-size: 12px;
   backdrop-filter: blur(8px);
-  box-shadow: 0 0 16px rgba(0, 217, 255, 0.2);
+  box-shadow: 0 0 16px rgba(1, 239, 182, 0.2);
 }
 
 .pulse-dot {
@@ -590,7 +626,7 @@ function onKeydown(e) {
   align-items: center;
   gap: 6px;
   padding: 5px 10px;
-  background: rgba(13, 19, 32, 0.85);
+  background: rgba(2, 22, 51, 0.85);
   border: 1px solid var(--border-line);
   border-radius: var(--radius-sm);
   font-size: 11px;

@@ -3,18 +3,20 @@
     <div class="panel-header">
       <span class="panel-title">属性配置</span>
       <span v-if="node" class="panel-tag mono">{{ node.type.toUpperCase() }}</span>
+      <span v-else-if="link" class="panel-tag mono">LINK</span>
     </div>
 
-    <div v-if="!node" class="empty-state">
+    <div v-if="!node && !link" class="empty-state">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" stroke-width="1.2">
         <rect x="3" y="3" width="18" height="18" rx="2"/>
         <path d="M9 9h6v6H9z"/>
       </svg>
       <div class="empty-text">未选中任何元素</div>
-      <div class="empty-hint">点击画布上的节点以编辑属性</div>
+      <div class="empty-hint">点击画布上的节点或连线以编辑属性</div>
     </div>
 
-    <div v-else class="panel-body">
+    <!-- ============ 节点属性 ============ -->
+    <div v-else-if="node" class="panel-body">
       <!-- 基本属性 -->
       <div class="prop-section">
         <div class="section-title">
@@ -28,7 +30,7 @@
             <a-tag :color="typeColor">{{ typeLabel }}</a-tag>
           </a-form-item>
           <a-form-item label="名称">
-            <a-input v-model:value="form.text" @change="emitChange('text', form.text)" placeholder="节点名称" />
+            <a-input v-model:value="form.text" @input="emitChange('text', form.text)" @change="emitChange('text', form.text)" placeholder="节点名称" />
           </a-form-item>
           <a-form-item v-if="node.type === 'text'" label="字号">
             <a-input-number v-model:value="form.fontSize" :min="8" :max="48" @change="emitStyle('fontSize', form.fontSize)" style="width: 100%" />
@@ -43,14 +45,14 @@
           </div>
           <div class="prop-row">
             <a-form-item label="宽度" style="flex:1">
-              <a-input-number v-model:value="form.width" :min="20" @change="emitChange('width', form.width)" style="width: 100%" />
+              <a-input-number v-model:value="form.width" :min="2" @change="emitChange('width', form.width)" style="width: 100%" />
             </a-form-item>
             <a-form-item label="高度" style="flex:1">
-              <a-input-number v-model:value="form.height" :min="20" @change="emitChange('height', form.height)" style="width: 100%" />
+              <a-input-number v-model:value="form.height" :min="2" @change="emitChange('height', form.height)" style="width: 100%" />
             </a-form-item>
           </div>
-          <a-form-item label="旋转角度">
-            <a-slider v-model:value="form.rotate" :min="0" :max="360" @change="emitChange('rotate', form.rotate)" />
+          <a-form-item label="旋转角度 (°)">
+            <span class="prop-rotate mono">{{ form.rotate.toFixed(1) }}°</span>
           </a-form-item>
         </a-form>
       </div>
@@ -61,14 +63,11 @@
           <span class="section-dot" style="background:var(--accent-amber)"></span>样式
         </div>
         <a-form layout="vertical" size="small" :colon="false">
-          <a-form-item v-if="node.type === 'line'" label="颜色">
+          <a-form-item v-if="node.type === 'line' || node.type === 'busbar'" label="颜色">
             <div class="color-picker-row">
-              <input type="color" v-model="form.stroke" @input="emitStyle('stroke', form.stroke); emitStyle('fill', form.stroke)" />
-              <a-input v-model:value="form.stroke" @change="emitStyle('stroke', form.stroke); emitStyle('fill', form.stroke)" />
+              <input type="color" v-model="form.color" @input="onColorChange" />
+              <a-input v-model:value="form.color" @input="onColorChange" @change="onColorChange" />
             </div>
-          </a-form-item>
-          <a-form-item v-if="node.type === 'line'" label="线宽">
-            <a-input-number v-model:value="form.strokeWidth" :min="1" :max="10" @change="emitStyle('strokeWidth', form.strokeWidth)" style="width: 100%" />
           </a-form-item>
           <a-form-item v-if="node.type === 'text'" label="颜色">
             <div class="color-picker-row">
@@ -150,6 +149,34 @@
         </div>
       </div>
     </div>
+
+    <!-- ============ 连线属性 ============ -->
+    <div v-else class="panel-body">
+      <div class="prop-section">
+        <div class="section-title">
+          <span class="section-dot"></span>连线属性
+        </div>
+        <a-form layout="vertical" size="small" :colon="false">
+          <a-form-item label="ID">
+            <span class="prop-id mono">{{ link.id }}</span>
+          </a-form-item>
+          <a-form-item label="线条样式">
+            <a-select v-model:value="linkForm.type" @change="emitLinkChange('type', linkForm.type)" style="width: 100%">
+              <a-select-option value="straight">直线</a-select-option>
+              <a-select-option value="curve">曲线</a-select-option>
+              <a-select-option value="orthogonal">折线</a-select-option>
+            </a-select>
+          </a-form-item>
+          <a-form-item label="线型">
+            <a-select v-model:value="linkForm.dashType" @change="onDashChange" style="width: 100%">
+              <a-select-option value="solid">实线</a-select-option>
+              <a-select-option value="dashed">虚线</a-select-option>
+            </a-select>
+          </a-form-item>
+          <div v-if="linkForm.type === 'curve'" class="form-hint">提示：选中曲线后，可在画布中拖动控制点调整弧度</div>
+        </a-form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -159,10 +186,11 @@ import { NODE_TYPES, DEVICE_TYPE_LABELS } from '../config/nodeConfig'
 
 const props = defineProps({
   node: { type: Object, default: null },
+  link: { type: Object, default: null },
   deviceList: { type: Array, default: () => [] },
   boundDeviceIds: { type: Array, default: () => [] }
 })
-const emit = defineEmits(['change', 'style-change', 'bind', 'unbind'])
+const emit = defineEmits(['change', 'style-change', 'bind', 'unbind', 'link-change'])
 
 const parentStackId = ref(null)
 const selectedDeviceId = ref(null)
@@ -175,11 +203,17 @@ const form = reactive({
   height: 0,
   rotate: 0,
   fontSize: 14,
-  stroke: '#e70808',
+  color: '#ffffff',
   strokeWidth: 1,
-  textColor: '#e6edf7'
+  textColor: '#ffffff'
 })
 
+const linkForm = reactive({
+  type: 'straight',
+  dashType: 'solid'
+})
+
+// 节点变化时同步表单（含画布拖拽/缩放/旋转的实时回写）
 watch(
   () => props.node,
   (n) => {
@@ -189,15 +223,27 @@ watch(
     form.y = Math.round(n.y)
     form.width = Math.round(n.width)
     form.height = Math.round(n.height)
-    form.rotate = n.rotate || 0
+    form.rotate = Math.round((n.rotate || 0) * 10) / 10
     form.fontSize = (n.style && n.style.fontSize) || 14
-    form.stroke = (n.style && n.style.stroke) || '#e70808'
+    form.color = (n.style && n.style.stroke) || '#ffffff'
     form.strokeWidth = (n.style && n.style.strokeWidth) || 1
-    form.textColor = (n.style && n.style.fill) || '#e6edf7'
+    form.textColor = (n.style && n.style.fill) || '#ffffff'
     parentStackId.value = null
     selectedDeviceId.value = null
   },
-  { immediate: true }
+  { immediate: true, deep: true }
+)
+
+// 连线变化时同步表单
+watch(
+  () => props.link,
+  (l) => {
+    if (!l) return
+    linkForm.type = l.type || 'straight'
+    const dasharray = l.style && l.style.dasharray
+    linkForm.dashType = dasharray && dasharray !== '' ? 'dashed' : 'solid'
+  },
+  { immediate: true, deep: true }
 )
 
 const typeLabel = computed(() => {
@@ -216,7 +262,7 @@ const typeColor = computed(() => {
 })
 
 const hasStyle = computed(() => {
-  return props.node && ['line', 'text'].includes(props.node.type)
+  return props.node && ['line', 'text', 'busbar'].includes(props.node.type)
 })
 
 const stackDevices = computed(() => {
@@ -255,7 +301,7 @@ const availableDevices = computed(() => {
 const availableClusters = computed(() => {
   if (!parentStackId.value) return []
   const bound = new Set(props.boundDeviceIds)
-  const currentBinding = props.node.data.binding
+  const currentBinding = props.node && props.node.data.binding
   const result = []
   const walk = (list) => {
     list.forEach((d) => {
@@ -302,6 +348,23 @@ function emitChange(key, value) {
 function emitStyle(key, value) {
   emit('style-change', { nodeId: props.node.id, key, value })
 }
+// line/busbar 颜色：写入 style.stroke（画布渲染时读取此字段）
+function onColorChange() {
+  emitStyle('stroke', form.color)
+  emitStyle('fill', form.color)
+}
+
+// 连线
+function emitLinkChange(key, value) {
+  emit('link-change', { linkId: props.link.id, key, value })
+}
+function emitLinkStyle(patch) {
+  emit('link-change', { linkId: props.link.id, key: 'style', value: patch })
+}
+function onDashChange() {
+  const dasharray = linkForm.dashType === 'dashed' ? '6,4' : ''
+  emitLinkStyle({ dasharray })
+}
 </script>
 
 <style scoped>
@@ -325,7 +388,7 @@ function emitStyle(key, value) {
 .panel-tag {
   font-size: 9px;
   padding: 2px 6px;
-  background: rgba(0, 217, 255, 0.12);
+  background: rgba(1, 239, 182, 0.12);
   border: 1px solid var(--accent-cyan-dim);
   border-radius: 3px;
   color: var(--accent-cyan);
@@ -392,6 +455,17 @@ function emitStyle(key, value) {
   word-break: break-all;
 }
 
+.prop-rotate {
+  display: inline-block;
+  padding: 4px 10px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--accent-cyan);
+  font-size: 14px;
+  font-weight: 600;
+}
+
 .prop-row {
   display: flex;
   gap: 8px;
@@ -421,8 +495,8 @@ function emitStyle(key, value) {
 
 .binding-card {
   padding: 12px;
-  background: rgba(16, 217, 122, 0.06);
-  border: 1px solid rgba(16, 217, 122, 0.3);
+  background: rgba(4, 206, 158, 0.06);
+  border: 1px solid rgba(4, 206, 158, 0.3);
   border-radius: var(--radius-md);
 }
 

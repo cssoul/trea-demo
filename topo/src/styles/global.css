@@ -1,42 +1,45 @@
 :root {
-  /* === Industrial SCADA Palette === */
-  --bg-void: #05080f;
-  --bg-deep: #0a0e1a;
-  --bg-surface: #111726;
-  --bg-elevated: #1a2236;
-  --bg-panel: #0d1320;
-  --border-line: #1f2a40;
-  --border-strong: #2d3b57;
-  --grid-line: rgba(0, 217, 255, 0.04);
-  --grid-major: rgba(0, 217, 255, 0.08);
+  /* === Brand Palette === */
+  --bg-void: #021633;
+  --bg-deep: #021633;
+  --bg-surface: #062a4d;
+  --bg-elevated: #0a3258;
+  --bg-panel: #021633;
+  --border-line: #1a3a5c;
+  --border-strong: #6c759b;
+  --grid-line: rgba(1, 239, 182, 0.04);
+  --grid-major: rgba(1, 239, 182, 0.08);
 
-  --text-primary: #e6edf7;
-  --text-secondary: #8a99b8;
-  --text-tertiary: #5a6b8a;
-  --text-dim: #3d4a66;
+  --text-primary: rgba(255, 255, 255, 0.8);
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-tertiary: rgba(255, 255, 255, 0.4);
+  --text-dim: rgba(255, 255, 255, 0.25);
 
-  --accent-cyan: #00d9ff;
-  --accent-cyan-dim: rgba(0, 217, 255, 0.35);
-  --accent-cyan-glow: rgba(0, 217, 255, 0.55);
+  --accent-cyan: #01efb6;
+  --accent-cyan-dim: rgba(1, 239, 182, 0.35);
+  --accent-cyan-glow: rgba(1, 239, 182, 0.55);
   --accent-amber: #ffb020;
   --accent-amber-glow: rgba(255, 176, 32, 0.5);
   --accent-violet: #8b5cf6;
-  --accent-emerald: #10d97a;
-  --accent-emerald-glow: rgba(16, 217, 122, 0.5);
+  --accent-emerald: #04ce9e;
+  --accent-emerald-glow: rgba(4, 206, 158, 0.5);
   --accent-danger: #ff3860;
   --accent-danger-glow: rgba(255, 56, 96, 0.6);
 
-  --energy-charge: #00d9ff;
+  --btn-primary: #04ce9e;
+  --btn-default: #283363;
+
+  --energy-charge: #01efb6;
   --energy-discharge: #ffb020;
-  --energy-idle: #5a6b8a;
+  --energy-idle: rgba(255, 255, 255, 0.4);
 
   --font-display: 'Chakra Petch', 'PingFang SC', sans-serif;
   --font-body: 'IBM Plex Sans', 'PingFang SC', -apple-system, sans-serif;
   --font-mono: 'IBM Plex Mono', 'SF Mono', monospace;
 
-  --shadow-glow: 0 0 20px rgba(0, 217, 255, 0.15);
+  --shadow-glow: 0 0 20px rgba(1, 239, 182, 0.15);
   --shadow-panel: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 1px rgba(0, 217, 255, 0.2);
+  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 1px rgba(1, 239, 182, 0.2);
 
   --radius-sm: 4px;
   --radius-md: 6px;
@@ -87,22 +90,22 @@ body {
 }
 
 .ant-btn-primary {
-  background: linear-gradient(180deg, #00d9ff 0%, #00a8cc 100%) !important;
+  background: var(--btn-primary) !important;
   border: none !important;
-  box-shadow: 0 0 12px rgba(0, 217, 255, 0.4) !important;
-  color: #05080f !important;
+  box-shadow: 0 0 12px rgba(4, 206, 158, 0.4) !important;
+  color: #021633 !important;
   font-weight: 600;
 }
 
 .ant-btn-primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, #33e0ff 0%, #00b8e0 100%) !important;
-  box-shadow: 0 0 18px rgba(0, 217, 255, 0.6) !important;
+  background: #03b88a !important;
+  box-shadow: 0 0 18px rgba(4, 206, 158, 0.6) !important;
 }
 
 .ant-btn-default {
-  background: var(--bg-elevated) !important;
-  border-color: var(--border-strong) !important;
-  color: var(--text-secondary) !important;
+  background: var(--btn-default) !important;
+  border-color: transparent !important;
+  color: var(--text-primary) !important;
 }
 
 .ant-btn-default:hover {
@@ -129,7 +132,7 @@ body {
 .ant-input-focused,
 .ant-input-affix-wrapper-focused {
   border-color: var(--accent-cyan) !important;
-  box-shadow: 0 0 0 2px rgba(0, 217, 255, 0.15) !important;
+  box-shadow: 0 0 0 2px rgba(1, 239, 182, 0.15) !important;
 }
 
 .ant-select-dropdown {
@@ -146,7 +149,7 @@ body {
 }
 
 .ant-select-item-option-selected {
-  background: rgba(0, 217, 255, 0.15) !important;
+  background: rgba(1, 239, 182, 0.15) !important;
   color: var(--accent-cyan) !important;
   font-weight: 600;
 }

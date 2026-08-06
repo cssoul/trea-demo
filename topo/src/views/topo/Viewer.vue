@@ -5,7 +5,7 @@
       <div class="header-left">
         <div class="brand-mark">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2L3 7v10l9 5 9-5V7l-9-5z" stroke="var(--accent-cyan)" stroke-width="1.5" fill="rgba(0,217,255,0.08)"/>
+            <path d="M12 2L3 7v10l9 5 9-5V7l-9-5z" stroke="var(--accent-cyan)" stroke-width="1.5" fill="rgba(1,239,182,0.08)"/>
             <path d="M12 2v20M3 7l9 5 9-5" stroke="var(--accent-cyan)" stroke-width="1" opacity="0.5"/>
           </svg>
         </div>
@@ -73,7 +73,7 @@
           <span>SOC 进度</span>
         </div>
         <div class="legend-item">
-          <span class="legend-alarm"></span>
+          <img class="legend-alarm" src="/imgs/alarm.png" alt="告警闪烁" />
           <span>告警闪烁</span>
         </div>
       </div>
@@ -359,10 +359,10 @@ function goEdit() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 217, 255, 0.08);
+  background: rgba(1, 239, 182, 0.08);
   border: 1px solid var(--accent-cyan-dim);
   border-radius: var(--radius-md);
-  filter: drop-shadow(0 0 8px rgba(0, 217, 255, 0.3));
+  filter: drop-shadow(0 0 8px rgba(1, 239, 182, 0.3));
 }
 
 .view-title {
@@ -491,7 +491,7 @@ function goEdit() {
   left: 16px;
   z-index: 4;
   padding: 12px 14px;
-  background: rgba(13, 19, 32, 0.88);
+  background: rgba(2, 22, 51, 0.88);
   border: 1px solid var(--border-line);
   border-radius: var(--radius-md);
   backdrop-filter: blur(8px);
@@ -541,10 +541,9 @@ function goEdit() {
 }
 
 .legend-alarm {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
-  border: 2px solid var(--accent-danger);
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
   animation: blink-alarm 0.8s infinite;
 }
 
@@ -564,7 +563,7 @@ function goEdit() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(13, 19, 32, 0.88);
+  background: rgba(2, 22, 51, 0.88);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   color: var(--text-secondary);
@@ -576,7 +575,7 @@ function goEdit() {
 .ctrl-btn:hover {
   color: var(--accent-cyan);
   border-color: var(--accent-cyan-dim);
-  box-shadow: 0 0 10px rgba(0, 217, 255, 0.2);
+  box-shadow: 0 0 10px rgba(1, 239, 182, 0.2);
 }
 
 /* ============ 详情弹窗 ============ */
@@ -589,7 +588,7 @@ function goEdit() {
   align-items: center;
   gap: 14px;
   padding: 18px 20px;
-  background: linear-gradient(135deg, rgba(0, 217, 255, 0.08) 0%, transparent 100%);
+  background: linear-gradient(135deg, rgba(1, 239, 182, 0.08) 0%, transparent 100%);
   border-bottom: 1px solid var(--border-line);
 }
 
@@ -612,7 +611,7 @@ function goEdit() {
 .detail-icon-wrap img {
   max-width: 100%;
   max-height: 100%;
-  filter: drop-shadow(0 0 6px rgba(0, 217, 255, 0.3));
+  filter: drop-shadow(0 0 6px rgba(1, 239, 182, 0.3));
 }
 
 .detail-info {
@@ -654,7 +653,7 @@ function goEdit() {
 
 .detail-status.charging {
   color: var(--accent-cyan);
-  background: rgba(0, 217, 255, 0.12);
+  background: rgba(1, 239, 182, 0.12);
 }
 .detail-status.charging .status-dot {
   background: var(--accent-cyan);

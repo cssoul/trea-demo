@@ -44,7 +44,9 @@
 </template>
 
 <script setup>
-defineProps({
+import { watch, onBeforeUnmount } from 'vue'
+
+const props = defineProps({
   visible: Boolean,
   x: { type: Number, default: 0 },
   y: { type: Number, default: 0 },
@@ -57,6 +59,37 @@ function action(type) {
   emit('action', type)
   emit('close')
 }
+
+/**
+ * 浮层打开时，监听 document 上的鼠标左键点击，
+ * 点击浮层以外的任何位置即关闭浮层。
+ */
+function handleDocumentMouseDown(event) {
+  if (!props.visible) return
+  const root = document.querySelector('.context-menu')
+  // 点击事件源在菜单内时，由菜单自身的 @click.stop 阻止冒泡，仍会触发关闭
+  // 这里只关闭菜单外的点击
+  if (root && root.contains(event.target)) return
+  emit('close')
+}
+
+watch(
+  () => props.visible,
+  (v) => {
+    if (v) {
+      // 使用 mousedown 比 click 更早，避免与节点拖拽产生时序冲突
+      setTimeout(() => {
+        document.addEventListener('mousedown', handleDocumentMouseDown, true)
+      }, 0)
+    } else {
+      document.removeEventListener('mousedown', handleDocumentMouseDown, true)
+    }
+  }
+)
+
+onBeforeUnmount(() => {
+  document.removeEventListener('mousedown', handleDocumentMouseDown, true)
+})
 </script>
 
 <style scoped>
@@ -67,7 +100,7 @@ function action(type) {
   background: var(--bg-elevated);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-panel), 0 0 1px rgba(0, 217, 255, 0.3);
+  box-shadow: var(--shadow-panel), 0 0 1px rgba(1, 239, 182, 0.3);
   padding: 6px;
   backdrop-filter: blur(8px);
   animation: ctx-pop 0.12s ease-out;

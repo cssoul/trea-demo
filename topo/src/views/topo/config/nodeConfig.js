@@ -11,10 +11,11 @@ export const NODE_TYPES = {
     category: 'basic',
     icon: '/imgs/busbar.svg',
     defaultWidth: 200,
-    defaultHeight: 12,
+    defaultHeight: 5,
     bindable: false,
     resizable: 'horizontal',
-    strokeColor: '#5a6b8a',
+    strokeColor: '#ffffff',
+    showLabel: false,
     description: '交流/直流母线，作为电路汇集节点'
   },
   line: {
@@ -26,7 +27,8 @@ export const NODE_TYPES = {
     defaultHeight: 2,
     bindable: false,
     resizable: 'horizontal',
-    strokeColor: '#e70808',
+    strokeColor: '#ffffff',
+    showLabel: false,
     description: '直线连接元素'
   },
   text: {
@@ -38,6 +40,7 @@ export const NODE_TYPES = {
     defaultHeight: 24,
     bindable: false,
     resizable: 'both',
+    showLabel: false,
     description: '文本标注'
   },
 
