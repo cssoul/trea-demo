@@ -49,9 +49,14 @@ export default class AnimationManager {
       const node = this.canvas.getNode(nodeId)
       if (!node) return
 
-      // SOC 进度条（stack/cluster）
+      // 电池节点（stack/cluster）：用电池组件渲染 SOC + 充放电动效
       if (node.type === 'stack' || node.type === 'cluster') {
-        this.canvas.setNodeSoc(nodeId, data.soc)
+        // status: charging -> charge=1, discharging -> charge=-1, idle/offline -> charge=0
+        let charge = 0
+        if (data.status === 'charging') charge = 1
+        else if (data.status === 'discharging') charge = -1
+        // data.soc 为 0-100 百分制，转成 0-1 小数传给电池组件
+        this.canvas.setNodeBattery(nodeId, data.soc / 100, charge)
       }
 
       // 告警闪烁

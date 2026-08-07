@@ -19,10 +19,10 @@ export interface DeviceRealtimeData {
 // 每个设备的内部状态机
 const deviceStates: Record<string, { soc: number; power: number; status: string; alarm: boolean; phase: number }> = {
   stack001: { soc: 68, power: 120, status: 'charging', alarm: false, phase: 0 },
-  stack002: { soc: 42, power: -85, status: 'discharging', alarm: false, phase: 0 },
+  stack002: { soc: 15, power: -85, status: 'discharging', alarm: false, phase: 0 },
   cluster001: { soc: 67, power: 40, status: 'charging', alarm: false, phase: 0 },
   cluster002: { soc: 69, power: 38, status: 'charging', alarm: false, phase: 0 },
-  cluster004: { soc: 41, power: -28, status: 'discharging', alarm: false, phase: 0 },
+  cluster004: { soc: 35, power: -28, status: 'discharging', alarm: false, phase: 0 },
   pcs001: { soc: 0, power: 120, status: 'charging', alarm: false, phase: 0 },
   pcs002: { soc: 0, power: -85, status: 'discharging', alarm: false, phase: 0 },
   pv001: { soc: 0, power: 35, status: 'discharging', alarm: false, phase: 0 },
@@ -118,10 +118,10 @@ export function getRealtimeData(): Record<string, DeviceRealtimeData> {
  */
 export function resetRealtimeData() {
   deviceStates.stack001 = { soc: 68, power: 120, status: 'charging', alarm: false, phase: 0 }
-  deviceStates.stack002 = { soc: 42, power: -85, status: 'discharging', alarm: false, phase: 0 }
+  deviceStates.stack002 = { soc: 15, power: -85, status: 'discharging', alarm: false, phase: 0 }
   deviceStates.cluster001 = { soc: 67, power: 40, status: 'charging', alarm: false, phase: 0 }
   deviceStates.cluster002 = { soc: 69, power: 38, status: 'charging', alarm: false, phase: 0 }
-  deviceStates.cluster004 = { soc: 41, power: -28, status: 'discharging', alarm: false, phase: 0 }
+  deviceStates.cluster004 = { soc: 35, power: -28, status: 'discharging', alarm: false, phase: 0 }
   deviceStates.pcs001 = { soc: 0, power: 120, status: 'charging', alarm: false, phase: 0 }
   deviceStates.pcs002 = { soc: 0, power: -85, status: 'discharging', alarm: false, phase: 0 }
   deviceStates.pv001 = { soc: 0, power: 35, status: 'discharging', alarm: false, phase: 0 }

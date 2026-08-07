@@ -601,6 +601,14 @@ export default class TopoCanvas {
     }
 
     if (type === 'text') {
+      // 字号随节点高度等比缩放，最小12px
+      const baseSize = (node.style && node.style.fontSize) || node.baseFontSize || 12
+      const initHeight = node.initialHeight || node.height
+      const fontSize = Math.max(12, baseSize * (node.height / initHeight))
+      // 将计算出的字号与当前高度写回节点，并让属性面板同步显示
+      if (!node.style) node.style = {}
+      node.style.fontSize = Math.round(fontSize)
+      node.initialHeight = node.height
       selection
         .append('text')
         .attr('x', node.width / 2)
@@ -609,13 +617,21 @@ export default class TopoCanvas {
         .attr('dominant-baseline', 'middle')
         .attr('fill', (node.style && node.style.fill) || 'var(--text-primary)')
         .attr('font-family', 'var(--font-display)')
-        .attr('font-size', (node.style && node.style.fontSize) || 14)
+        .attr('font-size', fontSize)
         .attr('font-weight', 600)
         .text(node.text || '')
       return
     }
 
-    // 设备类节点：image + 可选的 SOC 进度条（由 AnimationManager 控制）
+    // 电池类节点（stack/cluster）：用电池 SVG 渲染（外壳 + 渐变填充 + 充放电动效）
+    if (type === 'stack' || type === 'cluster') {
+      this._renderBatteryNode(selection, node)
+      // 设备数据徽章容器（右上角）
+      selection.append('g').attr('class', 'topo-node-badge')
+      return
+    }
+
+    // 其他设备类节点：图片 icon
     const config = NODE_TYPES[type]
     const icon = node.icon || (config && config.icon)
     if (icon) {
@@ -631,13 +647,74 @@ export default class TopoCanvas {
 
     // 设备数据徽章容器（右上角）
     selection.append('g').attr('class', 'topo-node-badge')
-    // SOC 进度条容器（用于 stack/cluster）
-    if (type === 'stack' || type === 'cluster') {
-      selection
-        .append('g')
-        .attr('class', 'topo-soc-bar')
-        .attr('transform', `translate(0, ${node.height + 2})`)
-    }
+  }
+
+  /**
+   * 渲染电池类节点（stack/cluster）：外壳 + 顶部小帽 + 渐变填充。
+   * 填充高度由 node.data.batterySoc（0-1）控制，充放电动效由 AnimationManager 驱动。
+   * @param {d3.Selection} selection 节点内容组
+   * @param {Object} node 节点数据
+   */
+  _renderBatteryNode(selection, node) {
+    // 电池以 viewBox 0 0 72 72 绘制：外壳 M14 12H58V68H14z，填充区 y 24-68(高44)
+    // 用 <g> 包裹并按节点宽高等比缩放居中，保证随节点尺寸变化且不失真
+    const scale = Math.min(node.width / 72, node.height / 72)
+    const offsetX = (node.width - 72 * scale) / 2
+    const offsetY = (node.height - 72 * scale) / 2
+    const box = selection.append('g').attr('class', 'topo-battery').attr('transform', `translate(${offsetX},${offsetY}) scale(${scale})`)
+
+    // 外壳（描边）
+    box
+      .append('path')
+      .attr('class', 'topo-battery-body')
+      .attr('d', 'M14 12H58V68H14z')
+      .attr('fill', '#1a2236')
+      .attr('stroke', 'rgba(0,253,67,0.75)')
+      .attr('stroke-width', 2)
+      .attr('stroke-linecap', 'square')
+    // 顶部小帽（填充背景色）
+    box
+      .append('path')
+      .attr('class', 'topo-battery-cap')
+      .attr('d', 'M28 4H44V12H28z')
+      .attr('fill', '#1a2236')
+      .attr('stroke', 'rgba(0,253,67,0.75)')
+      .attr('stroke-width', 2)
+      .attr('stroke-linecap', 'square')
+    // 填充区（SOC 高度），纯色，颜色由 SOC 分档决定（初始用默认绿）
+    box
+      .append('rect')
+      .attr('class', 'topo-battery-fill')
+      .attr('x', 15)
+      .attr('width', 42)
+      .attr('y', 68)
+      .attr('height', 0)
+      .attr('rx', 0)
+
+    // 记录节点电池状态（soc 0-1，charge 1/-1/0），供 AnimationManager 驱动
+    if (!node.data) node.data = {}
+    // 默认给一个 SOC 高度
+    const defaultSoc = 0.8
+    if (node.data.batterySoc == null) node.data.batterySoc = defaultSoc
+    if (node.data.batteryCharge == null) node.data.batteryCharge = 0
+    // 按默认 SOC 设置初始填充高度与颜色
+    box.select('.topo-battery-fill').attr('fill', this._batteryColor(node.data.batterySoc))
+    this._setBatteryFill(box.select('.topo-battery-fill'), node.data.batterySoc)
+
+    // 用 CSS 过渡实现静置/切换时的平滑升降
+    box.select('.topo-battery-fill').style('transition', 'y 0.8s ease, height 0.8s ease')
+  }
+
+  /**
+   * 根据 SOC 返回电池填充纯色：
+   * 0.2 以下红色，0.2-0.6 橙色，0.6 以上绿色
+   * @param {number} soc 0-1
+   */
+  _batteryColor(soc) {
+    const s = Math.max(0, Math.min(1, soc == null ? 0 : soc))
+    if (s < 0.2) return '#ff3b30' // 红
+    if (s <= 0.6) return '#ff9500' // 橙
+    return '#00fd43' // 绿
   }
 
   // ============ 选择 ============
@@ -1132,38 +1209,143 @@ export default class TopoCanvas {
   }
 
   /**
-   * 设置节点 SOC 进度条（stack/cluster）
+   * 设置电池节点（stack/cluster）的 SOC 与充放电状态，并驱动填充高度。
+   * @param {string} nodeId 节点 id
+   * @param {number} soc 电量 0-1
+   * @param {number} charge 1 充电 / -1 放电 / 0 静置
    */
-  setNodeSoc(nodeId, soc) {
+  setNodeBattery(nodeId, soc, charge = 0) {
     const node = this.getNode(nodeId)
     if (!node) return
-    const sel = this.nodesG
+    const socClamped = Math.max(0, Math.min(1, soc == null ? 0 : soc))
+    if (!node.data) node.data = {}
+    const prevCharge = node.data.batteryCharge
+    node.data.batterySoc = socClamped
+    node.data.batteryCharge = charge
+
+    // 获取填充 rect
+    const fillSel = this.nodesG
       .selectAll('g.topo-node')
       .filter((d) => d.id === nodeId)
-      .select('.topo-soc-bar')
-    sel.selectAll('*').remove()
-    if (soc == null) return
-    const pct = Math.max(0, Math.min(100, soc))
-    const barW = node.width
-    const barH = 3
-    // 背景
-    sel
-      .append('rect')
-      .attr('width', barW)
-      .attr('height', barH)
-      .attr('rx', 1.5)
-      .attr('fill', 'var(--bg-deep)')
-      .attr('stroke', 'var(--border-line)')
-      .attr('stroke-width', 0.5)
-    // 填充
-    const fillColor = pct > 50 ? 'var(--accent-emerald)' : pct > 20 ? 'var(--accent-amber)' : 'var(--accent-danger)'
-    sel
-      .append('rect')
-      .attr('width', (barW * pct) / 100)
-      .attr('height', barH)
-      .attr('rx', 1.5)
-      .attr('fill', fillColor)
-      .style('filter', 'drop-shadow(0 0 3px currentColor)')
+      .select('.topo-battery-fill')
+    if (fillSel.empty()) return
+
+    // charge 状态未变化时，保持现有动画/静置状态，只更新 soc 或高度，避免每轮轮询重启动画
+    if (prevCharge === charge) {
+      if (charge === 0) {
+        // 静置：更新到当前 SOC 高度与颜色（平滑过渡）
+        this._setBatteryFill(fillSel, socClamped, this._batteryColor(socClamped))
+      } else {
+        // 充/放电中：更新动画范围（不重启）
+        this._updateBatteryAnim(nodeId, socClamped, charge)
+      }
+      return
+    }
+
+    // 停止已有动画
+    this._stopBatteryAnim(nodeId)
+
+    if (charge === 1 || charge === -1) {
+      // 充电/放电：高度在 [SOC/2, SOC] 区间内，慢速到 SOC 停顿后快速回 SOC/2
+      this._startBatteryAnim(nodeId, fillSel, socClamped, charge)
+    } else {
+      // 静置：禁用过渡后设到 SOC 高度与颜色，再启用过渡（避免 rAF 与过渡冲突）
+      fillSel.style('transition', 'none')
+      this._setBatteryFill(fillSel, socClamped, this._batteryColor(socClamped))
+      // 下一帧启用过渡，用于后续 SOC 变化时的平滑
+      requestAnimationFrame(() => {
+        fillSel.style('transition', 'y 0.8s ease, height 0.8s ease')
+      })
+    }
+  }
+
+  /**
+   * 更新正在进行的充放电动画的目标范围（不重启，保持循环连贯）
+   */
+  _updateBatteryAnim(nodeId, soc, charge) {
+    const anim = this._batteryAnims && this._batteryAnims[nodeId]
+    if (anim) {
+      anim.soc = soc
+      anim.charge = charge
+    }
+  }
+
+  /**
+   * 设置填充高度（SOC 0-1 -> y 24-68）并更新纯色
+   * @param {d3.Selection} fillSel 填充 rect
+   * @param {number} soc 高度比例 0-1
+   * @param {string} [color] 填充颜色（缺省时按 soc 分档）
+   */
+  _setBatteryFill(fillSel, soc, color) {
+    const y = 68 - soc * 44
+    fillSel.attr('y', y).attr('height', 68 - y)
+    if (color) fillSel.attr('fill', color)
+  }
+
+  /**
+   * 启动充放电动画（范围 [SOC*2/3, SOC]）：
+   * - 充电：从 SOC*2/3 较慢升到 SOC -> 停顿1s -> 较快降回 SOC*2/3 -> 循环
+   * - 放电：从 SOC 较慢降到 SOC*2/3 -> 停顿1s -> 较快升回 SOC -> 循环
+   * 动画只改变填充高度，颜色由父级 SOC 值决定（<0.2红 / 0.2-0.6橙 / >0.6绿），动效过程中颜色不变
+   * @param {string} nodeId 节点 id
+   * @param {d3.Selection} fillSel 填充 rect
+   * @param {number} soc SOC 值 0-1
+   * @param {number} charge 1 充电 / -1 放电
+   */
+  _startBatteryAnim(nodeId, fillSel, soc, charge) {
+    const self = this
+    if (!this._batteryAnims) this._batteryAnims = {}
+    this._stopBatteryAnim(nodeId)
+    // 动画期间禁用 CSS 过渡，避免 rAF 高频更新被过渡拖慢卡顿
+    fillSel.style('transition', 'none')
+    const slowDur = 3200 // 较慢移动时长 ms
+    const fastDur = 900 // 较快移动时长 ms
+    const pauseDur = 1000 // 停顿 1s
+    const anim = {
+      soc,
+      charge,
+      rafId: null
+    }
+    // 周期：慢移 + 停顿 + 快移
+    const cycleDur = slowDur + pauseDur + fastDur
+    const start = performance.now()
+    const tick = (now) => {
+      const pos = (now - start) % cycleDur // 周期内毫秒位置
+      const low = Math.max(0, anim.soc * (2 / 3)) // 区间下限 SOC*2/3
+      const top = anim.soc
+      let ratio
+      const charging = anim.charge === 1
+      if (pos < slowDur) {
+        // 慢移段
+        const p = pos / slowDur
+        // 充电：low->SOC(升)；放电：SOC->low(降)
+        ratio = charging ? low + (top - low) * p : top - (top - low) * p
+      } else if (pos < slowDur + pauseDur) {
+        // 停顿段：充电停顶部(SOC)，放电停底部(SOC*2/3)
+        ratio = charging ? top : low
+      } else {
+        // 快移段
+        const p = (pos - slowDur - pauseDur) / fastDur
+        // 充电：SOC->low(降)；放电：low->SOC(升)
+        ratio = charging ? top - (top - low) * p : low + (top - low) * p
+      }
+      // 颜色由父级传入的 SOC 值（anim.soc）决定，动效只改变高度，不改变颜色
+      self._setBatteryFill(fillSel, ratio, self._batteryColor(anim.soc))
+      anim.rafId = requestAnimationFrame(tick)
+    }
+    anim.rafId = requestAnimationFrame(tick)
+    this._batteryAnims[nodeId] = anim
+  }
+
+  /**
+   * 停止节点的电池动画
+   */
+  _stopBatteryAnim(nodeId) {
+    if (this._batteryAnims && this._batteryAnims[nodeId]) {
+      const anim = this._batteryAnims[nodeId]
+      if (anim.rafId) cancelAnimationFrame(anim.rafId)
+      delete this._batteryAnims[nodeId]
+    }
   }
 
   /**
@@ -1241,6 +1423,13 @@ export default class TopoCanvas {
   // ============ 销毁 ============
   destroy() {
     if (this._resizeObserver) this._resizeObserver.disconnect()
+    // 停止所有电池充放电动画
+    if (this._batteryAnims) {
+      Object.values(this._batteryAnims).forEach((anim) => {
+        if (anim.rafId) cancelAnimationFrame(anim.rafId)
+      })
+      this._batteryAnims = {}
+    }
     this.svg.remove()
     this._listeners = {}
   }

@@ -458,9 +458,6 @@ function onDashChange() {
 .prop-rotate {
   display: inline-block;
   padding: 4px 10px;
-  background: var(--bg-deep);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
   color: var(--accent-cyan);
   font-size: 14px;
   font-weight: 600;
