@@ -487,6 +487,14 @@ export default class TopoCanvas {
       merged
         .on('click', (event, d) => {
           event.stopPropagation()
+          // 连线模式：已选源节点时，点击其他节点即可完成连线
+          if (this.linkMode && this.linkSourceId) {
+            if (d.id !== this.linkSourceId) {
+              this._createLink(this.linkSourceId, d.id)
+            }
+            this._clearLinkSource()
+            return
+          }
           this._selectNode(d.id)
         })
         .on('contextmenu', (event, d) => {
@@ -526,6 +534,14 @@ export default class TopoCanvas {
           .style('opacity', d.id === this.linkSourceId ? 1 : 0.6)
           .on('click', (event, dd) => {
             event.stopPropagation()
+            // 已有源节点时，点击其他节点的连接点直接完成连线
+            if (this.linkSourceId) {
+              if (dd.id !== this.linkSourceId) {
+                this._createLink(this.linkSourceId, dd.id)
+              }
+              this._clearLinkSource()
+              return
+            }
             this._startLinkFrom(dd.id)
           })
       }
@@ -546,7 +562,9 @@ export default class TopoCanvas {
   _updateRotHandle(nodeG, d) {
     const rotHandleG = nodeG.select('.topo-rot-handles')
     rotHandleG.style('opacity', d.id === this.selectedNodeId ? 1 : 0)
-    const ROT_RADIUS = Math.max(d.width, d.height) / 2 + 28 // 圆点到元素中心的固定距离（随元素大小微调，保证在元素外）
+    // 圆点到元素中心的距离：基础距离 max(w,h)/2 + 28 保证在元素外，
+    // 但对于很宽的母线/直线，句柄会过长，限制最大 60px
+    const ROT_RADIUS = Math.min(Math.max(d.width, d.height) / 2 + 28, 60)
     const theta = ((d.rotate || 0) * Math.PI) / 180
     // 元素中心局部坐标
     const cx = d.width / 2
@@ -1079,14 +1097,6 @@ export default class TopoCanvas {
       const [mx, my] = d3.pointer(event, self.zoomG.node())
       self._drawTempLink(nodeId, { x: mx, y: my })
     })
-    // 在节点上释放时建立连线
-    this.nodesG.selectAll('g.topo-node').on('mouseup.link', function (event, d) {
-      if (!self.linkSourceId) return
-      if (d.id !== self.linkSourceId) {
-        self._createLink(self.linkSourceId, d.id)
-      }
-      self._clearLinkSource()
-    })
   }
 
   _drawTempLink(sourceId, mouse) {
@@ -1131,7 +1141,6 @@ export default class TopoCanvas {
     this.linkSourceId = null
     this.overlayG.selectAll('*').remove()
     this.svg.on('mousemove.link', null)
-    this.nodesG.selectAll('g.topo-node').on('mouseup.link', null)
     this._renderNodes()
   }
 
