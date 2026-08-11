@@ -35,6 +35,7 @@ export const deviceList: DeviceItem[] = [
   { deviceId: 'meter001', deviceName: '关口表-1', deviceType: 'meter' },
   { deviceId: 'charger001', deviceName: '充电桩-1', deviceType: 'charger' },
   { deviceId: 'breaker001', deviceName: '断路器-1', deviceType: 'breaker' },
-  { deviceId: 'pinvt001', deviceName: '逆变器-1', deviceType: 'pinvt' }
+  { deviceId: 'pinvt001', deviceName: '逆变器-1', deviceType: 'pinvt' },
+  { deviceId: 'grid001', deviceName: '电网-1', deviceType: 'grid' }
 ]
 

@@ -1,30 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="60" height="60">
-  <defs>
-    <linearGradient id="transformerBody" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#1a2236"/>
-      <stop offset="100%" stop-color="#0d1320"/>
-    </linearGradient>
-    <filter id="txGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="1" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-  </defs>
-  <!-- Body -->
-  <rect x="14" y="10" width="32" height="40" rx="2" fill="url(#transformerBody)" stroke="#2d3b57" stroke-width="1.5"/>
-  <!-- Top label -->
-  <rect x="14" y="10" width="32" height="6" rx="2" fill="#0a0e1a" stroke="#2d3b57" stroke-width="1.5"/>
-  <text x="22" y="14.5" fill="#ffb020" font-family="monospace" font-size="5" font-weight="bold" filter="url(#txGlow)">TR</text>
-  <!-- Two overlapping coils (transformer symbol) -->
-  <g filter="url(#txGlow)" transform="translate(30, 32)">
-    <circle cx="-5" cy="0" r="8" fill="none" stroke="#00d9ff" stroke-width="1.5"/>
-    <circle cx="5" cy="0" r="8" fill="none" stroke="#ffb020" stroke-width="1.5"/>
-  </g>
-  <!-- Input lines -->
-  <line x1="10" y1="32" x2="18" y2="32" stroke="#00d9ff" stroke-width="1.5"/>
-  <line x1="42" y1="32" x2="50" y2="32" stroke="#ffb020" stroke-width="1.5"/>
-  <!-- Status LED -->
-  <circle cx="40" cy="13" r="1.2" fill="#10d97a"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 变压器：参考图1 风格，两个叠放圆环+底座（类似罐式变压器） -->
+  <!-- 底座 -->
+  <rect x="14" y="80" width="72" height="10" rx="2" ry="2"
+        fill="#9aa7b3" stroke="#1a3a5c" stroke-width="2" stroke-linejoin="round" />
+  <!-- 下层罐体 -->
+  <rect x="22" y="56" width="56" height="24" rx="4" ry="4"
+        fill="#cfe2f3" stroke="#1a3a5c" stroke-width="2.5" stroke-linejoin="round" />
+  <!-- 上层罐体 -->
+  <rect x="26" y="32" width="48" height="24" rx="4" ry="4"
+        fill="#cfe2f3" stroke="#1a3a5c" stroke-width="2.5" stroke-linejoin="round" />
+  <!-- 顶部套管（3 个绝缘子） -->
+  <rect x="34" y="22" width="6" height="10" fill="#9aa7b3" stroke="#1a3a5c" stroke-width="1.5" />
+  <rect x="47" y="22" width="6" height="10" fill="#9aa7b3" stroke="#1a3a5c" stroke-width="1.5" />
+  <rect x="60" y="22" width="6" height="10" fill="#9aa7b3" stroke="#1a3a5c" stroke-width="1.5" />
+  <!-- 罐体散热波纹线（下层） -->
+  <line x1="28" y1="64" x2="72" y2="64" stroke="#1a3a5c" stroke-width="1" opacity="0.6" />
+  <line x1="28" y1="72" x2="72" y2="72" stroke="#1a3a5c" stroke-width="1" opacity="0.6" />
+  <!-- 罐体散热波纹线（上层） -->
+  <line x1="32" y1="40" x2="68" y2="40" stroke="#1a3a5c" stroke-width="1" opacity="0.6" />
+  <line x1="32" y1="48" x2="68" y2="48" stroke="#1a3a5c" stroke-width="1" opacity="0.6" />
+  <!-- 高压闪电警示（中央） -->
+  <path d="M52 32 L46 42 L50 42 L48 52 L56 40 L52 40 Z"
+        fill="#f6b26b" stroke="#1a3a5c" stroke-width="1.2" stroke-linejoin="round" />
 </svg>

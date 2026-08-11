@@ -43,6 +43,19 @@ export const NODE_TYPES = {
     showLabel: false,
     description: '文本标注'
   },
+  rect: {
+    type: 'rect',
+    label: '矩形框',
+    category: 'basic',
+    icon: null,
+    defaultWidth: 120,
+    defaultHeight: 80,
+    bindable: false,
+    resizable: 'both',
+    showLabel: false,
+    strokeColor: '#ffffff',
+    description: '无填充矩形框，仅描边，可设置描边宽度与线型'
+  },
 
   // === 设备元素 ===
   stack: {
@@ -154,6 +167,18 @@ export const NODE_TYPES = {
     deviceType: 'transformer',
     resizable: 'both',
     description: '变压器'
+  },
+  grid: {
+    type: 'grid',
+    label: '电网',
+    category: 'device',
+    icon: '/imgs/grid.svg',
+    defaultWidth: 70,
+    defaultHeight: 70,
+    bindable: true,
+    deviceType: 'grid',
+    resizable: 'both',
+    description: '电网（电网侧接入）'
   }
 }
 
@@ -161,7 +186,7 @@ export const NODE_TYPES = {
 export const COMPONENT_GROUPS = [
   {
     title: '基础元素',
-    items: ['busbar', 'line', 'text']
+    items: ['busbar', 'line', 'text', 'rect']
   },
   {
     title: '储能设备',
@@ -169,7 +194,7 @@ export const COMPONENT_GROUPS = [
   },
   {
     title: '发电与计量',
-    items: ['pv', 'pinvt', 'meter', 'breaker', 'transformer', 'charger']
+    items: ['pv', 'pinvt', 'meter', 'breaker', 'transformer', 'charger', 'grid']
   }
 ]
 
@@ -194,6 +219,7 @@ export const LINK_TYPES = {
 
 // 设备类型映射（中文名）
 export const DEVICE_TYPE_LABELS = {
+  rect: '矩形框',
   stack: '电池堆',
   cluster: '电池簇',
   pcs: 'PCS',
@@ -202,7 +228,8 @@ export const DEVICE_TYPE_LABELS = {
   charger: '充电桩',
   pv: '光伏',
   breaker: '断路器',
-  transformer: '变压器'
+  transformer: '变压器',
+  grid: '电网'
 }
 
 // 父子级联关系：key 是子类型，value 是父类型

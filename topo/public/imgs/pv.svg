@@ -1,48 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 70" width="70" height="70">
-  <defs>
-    <linearGradient id="pvPanel" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#1a3a5a"/>
-      <stop offset="50%" stop-color="#0d2540"/>
-      <stop offset="100%" stop-color="#081830"/>
-    </linearGradient>
-    <linearGradient id="pvFrame" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#3d4a66"/>
-      <stop offset="100%" stop-color="#1f2a40"/>
-    </linearGradient>
-    <filter id="pvGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="1.2" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-  </defs>
-  <!-- Sun glow behind -->
-  <circle cx="35" cy="30" r="28" fill="#ffb020" opacity="0.06"/>
-  <circle cx="35" cy="30" r="20" fill="#ffb020" opacity="0.08"/>
-  <!-- Panel frame (tilted) -->
-  <g transform="rotate(-20 35 32)">
-    <rect x="12" y="14" width="46" height="30" rx="1" fill="url(#pvFrame)" stroke="#3d4a66" stroke-width="1.2"/>
-    <rect x="14" y="16" width="42" height="26" rx="0.5" fill="url(#pvPanel)"/>
-    <!-- Cell grid -->
-    <g stroke="#1a3a5a" stroke-width="0.6">
-      <line x1="24" y1="16" x2="24" y2="42"/>
-      <line x1="35" y1="16" x2="35" y2="42"/>
-      <line x1="46" y1="16" x2="46" y2="42"/>
-      <line x1="14" y1="24.5" x2="56" y2="24.5"/>
-      <line x1="14" y1="33.5" x2="56" y2="33.5"/>
-    </g>
-    <!-- Glint -->
-    <line x1="18" y1="18" x2="30" y2="22" stroke="#00d9ff" stroke-width="0.8" opacity="0.6" filter="url(#pvGlow)"/>
-  </g>
-  <!-- Stand -->
-  <line x1="28" y1="48" x2="28" y2="60" stroke="#2d3b57" stroke-width="2"/>
-  <line x1="42" y1="48" x2="42" y2="60" stroke="#2d3b57" stroke-width="2"/>
-  <line x1="22" y1="60" x2="48" y2="60" stroke="#2d3b57" stroke-width="2.5" stroke-linecap="round"/>
-  <!-- Sun rays -->
-  <g filter="url(#pvGlow)" stroke="#ffb020" stroke-width="1.2" stroke-linecap="round" opacity="0.8">
-    <line x1="58" y1="8" x2="62" y2="4"/>
-    <line x1="62" y1="16" x2="67" y2="16"/>
-    <line x1="56" y1="22" x2="60" y2="26"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 光伏：参考图1 PV Panel 房子（带光伏板屋顶） -->
+  <!-- 房子主体（墙体） -->
+  <rect x="20" y="46" width="60" height="44" rx="3" ry="3"
+        fill="#cfe2f3" stroke="#1a3a5c" stroke-width="2.5" stroke-linejoin="round" />
+  <!-- 屋顶梯形（光伏板） -->
+  <path d="M14 50 L50 18 L86 50 Z"
+        fill="#3b6ea5" stroke="#1a3a5c" stroke-width="2.5" stroke-linejoin="round" />
+  <!-- 屋顶光伏板格栅线 -->
+  <line x1="30" y1="38" x2="70" y2="38" stroke="#1a3a5c" stroke-width="1.5" />
+  <line x1="38" y1="28" x2="62" y2="50" stroke="#1a3a5c" stroke-width="1.5" />
+  <line x1="62" y1="28" x2="38" y2="50" stroke="#1a3a5c" stroke-width="1.5" />
+  <!-- 门（深色） -->
+  <rect x="42" y="66" width="16" height="24" rx="2" ry="2" fill="#1a3a5c" />
+  <circle cx="54" cy="78" r="1.5" fill="#ffd966" />
+  <!-- 左侧窗户 -->
+  <rect x="26" y="56" width="10" height="10" rx="1" ry="1" fill="#ffffff" stroke="#1a3a5c" stroke-width="1.5" />
+  <line x1="31" y1="56" x2="31" y2="66" stroke="#1a3a5c" stroke-width="1" />
+  <line x1="26" y1="61" x2="36" y2="61" stroke="#1a3a5c" stroke-width="1" />
+  <!-- 右侧窗户 -->
+  <rect x="64" y="56" width="10" height="10" rx="1" ry="1" fill="#ffffff" stroke="#1a3a5c" stroke-width="1.5" />
+  <line x1="69" y1="56" x2="69" y2="66" stroke="#1a3a5c" stroke-width="1" />
+  <line x1="64" y1="61" x2="74" y2="61" stroke="#1a3a5c" stroke-width="1" />
 </svg>

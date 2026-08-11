@@ -61,7 +61,7 @@ export const topoGraphData: TopoGraphData = {
       width: 60,
       height: 60,
       text: '电池堆-1',
-      icon: '/imgs/stack.svg',
+      icon: '/imgs/battery.svg',
       data: {
         deviceType: 'stack',
         bindable: true,
@@ -104,7 +104,7 @@ export const topoGraphData: TopoGraphData = {
       width: 60,
       height: 60,
       text: '电池堆-2',
-      icon: '/imgs/stack.svg',
+      icon: '/imgs/battery.svg',
       data: {
         deviceType: 'stack',
         bindable: true,
@@ -130,7 +130,7 @@ export const topoGraphData: TopoGraphData = {
       width: 50,
       height: 50,
       text: '电池簇-1-1',
-      icon: '/imgs/cluster.svg',
+      icon: '/imgs/battery.svg',
       data: {
         deviceType: 'cluster',
         bindable: true,
@@ -157,7 +157,7 @@ export const topoGraphData: TopoGraphData = {
       width: 50,
       height: 50,
       text: '电池簇-1-2',
-      icon: '/imgs/cluster.svg',
+      icon: '/imgs/battery.svg',
       data: {
         deviceType: 'cluster',
         bindable: true,
@@ -184,7 +184,7 @@ export const topoGraphData: TopoGraphData = {
       width: 50,
       height: 50,
       text: '电池簇-2-2',
-      icon: '/imgs/cluster.svg',
+      icon: '/imgs/battery.svg',
       data: {
         deviceType: 'cluster',
         bindable: true,

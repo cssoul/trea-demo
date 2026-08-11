@@ -29,7 +29,7 @@
           <a-form-item label="类型">
             <a-tag :color="typeColor">{{ typeLabel }}</a-tag>
           </a-form-item>
-          <a-form-item label="名称">
+          <a-form-item v-if="!isBasicType" label="名称">
             <a-input v-model:value="form.text" @input="emitChange('text', form.text)" @change="emitChange('text', form.text)" placeholder="节点名称" />
           </a-form-item>
           <a-form-item v-if="node.type === 'text'" label="字号">
@@ -63,11 +63,20 @@
           <span class="section-dot" style="background:var(--accent-amber)"></span>样式
         </div>
         <a-form layout="vertical" size="small" :colon="false">
-          <a-form-item v-if="node.type === 'line' || node.type === 'busbar'" label="颜色">
+          <a-form-item v-if="node.type === 'line' || node.type === 'busbar' || node.type === 'rect'" label="颜色">
             <div class="color-picker-row">
               <input type="color" v-model="form.color" @input="onColorChange" />
               <a-input v-model:value="form.color" @input="onColorChange" @change="onColorChange" />
             </div>
+          </a-form-item>
+          <a-form-item v-if="node.type === 'rect'" label="描边宽度">
+            <a-input-number v-model:value="form.strokeWidth" :min="1" :max="20" @change="onStrokeWidthChange" style="width: 100%" />
+          </a-form-item>
+          <a-form-item v-if="node.type === 'rect'" label="线型">
+            <a-select v-model:value="form.dashType" @change="onRectDashChange" style="width: 100%">
+              <a-select-option value="solid">实线</a-select-option>
+              <a-select-option value="dashed">虚线</a-select-option>
+            </a-select>
           </a-form-item>
           <a-form-item v-if="node.type === 'text'" label="颜色">
             <div class="color-picker-row">
@@ -205,7 +214,8 @@ const form = reactive({
   fontSize: 14,
   color: '#ffffff',
   strokeWidth: 1,
-  textColor: '#ffffff'
+  textColor: '#ffffff',
+  dashType: 'solid'
 })
 
 const linkForm = reactive({
@@ -228,6 +238,8 @@ watch(
     form.color = (n.style && n.style.stroke) || '#ffffff'
     form.strokeWidth = (n.style && n.style.strokeWidth) || 1
     form.textColor = (n.style && n.style.fill) || '#ffffff'
+    const dasharray = n.style && n.style.dasharray
+    form.dashType = dasharray && dasharray !== '' ? 'dashed' : 'solid'
     parentStackId.value = null
     selectedDeviceId.value = null
   },
@@ -262,7 +274,12 @@ const typeColor = computed(() => {
 })
 
 const hasStyle = computed(() => {
-  return props.node && ['line', 'text', 'busbar'].includes(props.node.type)
+  return props.node && ['line', 'text', 'busbar', 'rect'].includes(props.node.type)
+})
+
+// 基础类型（直线/母线/矩形框）无名称，右侧面板不显示名称输入框
+const isBasicType = computed(() => {
+  return props.node && ['line', 'busbar', 'rect'].includes(props.node.type)
 })
 
 const stackDevices = computed(() => {
@@ -351,7 +368,18 @@ function emitStyle(key, value) {
 // line/busbar 颜色：写入 style.stroke（画布渲染时读取此字段）
 function onColorChange() {
   emitStyle('stroke', form.color)
-  emitStyle('fill', form.color)
+  // 矩形框无填充，只设置描边颜色
+  if (props.node && props.node.type !== 'rect') {
+    emitStyle('fill', form.color)
+  }
+}
+// 矩形框描边宽度
+function onStrokeWidthChange() {
+  emitStyle('strokeWidth', form.strokeWidth)
+}
+// 矩形框线型（实线/虚线）
+function onRectDashChange() {
+  emitStyle('dasharray', form.dashType === 'dashed' ? '6,4' : '')
 }
 
 // 连线

@@ -1,30 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="60" height="60">
-  <defs>
-    <filter id="breakerGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="1" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-  </defs>
-  <!-- Top terminal -->
-  <rect x="26" y="4" width="8" height="6" rx="1" fill="#2d3b57" stroke="#3d4a66" stroke-width="1"/>
-  <line x1="30" y1="10" x2="30" y2="18" stroke="#5a6b8a" stroke-width="2"/>
-  <!-- Fixed contact (top) -->
-  <circle cx="30" cy="18" r="2" fill="#1a2236" stroke="#00d9ff" stroke-width="1.2" filter="url(#breakerGlow)"/>
-  <!-- Moving contact (angled - open position style but closed here) -->
-  <line x1="30" y1="18" x2="30" y2="34" stroke="#00d9ff" stroke-width="2" filter="url(#breakerGlow)"/>
-  <!-- Breaker mechanism box -->
-  <rect x="22" y="22" width="16" height="14" rx="1" fill="#0d1320" stroke="#2d3b57" stroke-width="1.2"/>
-  <rect x="24" y="24" width="12" height="3" rx="0.5" fill="#1a2236"/>
-  <!-- Toggle switch indicator -->
-  <circle cx="30" cy="32" r="1.5" fill="#10d97a" filter="url(#breakerGlow)"/>
-  <!-- Fixed contact (bottom) -->
-  <circle cx="30" cy="34" r="2" fill="#1a2236" stroke="#00d9ff" stroke-width="1.2" filter="url(#breakerGlow)"/>
-  <line x1="30" y1="34" x2="30" y2="44" stroke="#5a6b8a" stroke-width="2"/>
-  <!-- Bottom terminal -->
-  <rect x="26" y="44" width="8" height="6" rx="1" fill="#2d3b57" stroke="#3d4a66" stroke-width="1"/>
-  <!-- Side label area -->
-  <text x="42" y="32" fill="#5a6b8a" font-family="monospace" font-size="5">QF</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 断路器：参考图1 风格，方形电箱+开关拨杆 -->
+  <rect x="16" y="14" width="68" height="72" rx="4" ry="4"
+        fill="#cfe2f3" stroke="#1a3a5c" stroke-width="2.5" stroke-linejoin="round" />
+  <!-- 内部面板分隔线 -->
+  <line x1="50" y1="14" x2="50" y2="86" stroke="#1a3a5c" stroke-width="1.5" />
+  <!-- 上方警示三角（黄色） -->
+  <path d="M50 28 L42 40 L58 40 Z"
+        fill="#ffd966" stroke="#1a3a5c" stroke-width="2" stroke-linejoin="round" />
+  <text x="50" y="38" font-family="sans-serif" font-size="10" font-weight="bold"
+        text-anchor="middle" fill="#1a3a5c">!</text>
+  <!-- 左下方开关（红绿拨杆） -->
+  <rect x="22" y="54" width="20" height="22" rx="2" ry="2"
+        fill="#ffffff" stroke="#1a3a5c" stroke-width="2" />
+  <rect x="26" y="58" width="12" height="6" rx="1" ry="1" fill="#c0392b" />
+  <rect x="26" y="66" width="12" height="6" rx="1" ry="1" fill="#3b8c4a" />
+  <!-- 右下方开关 -->
+  <rect x="58" y="54" width="20" height="22" rx="2" ry="2"
+        fill="#ffffff" stroke="#1a3a5c" stroke-width="2" />
+  <rect x="62" y="58" width="12" height="6" rx="1" ry="1" fill="#3b8c4a" />
+  <rect x="62" y="66" width="12" height="6" rx="1" ry="1" fill="#c0392b" />
 </svg>

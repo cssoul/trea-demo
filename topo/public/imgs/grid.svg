@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 电网：高压电塔，浅蓝塔身 + 深蓝描边，提亮便于画布识别 -->
+  <!-- 塔身主体（浅蓝填充） -->
+  <path d="M24 90 L40 30 L46 14 L54 14 L60 30 L76 90 Z"
+        fill="#cfe2f3" stroke="#1a3a5c" stroke-width="2.5" stroke-linejoin="round" />
+  <!-- 塔身横撑（深色） -->
+  <line x1="31" y1="72" x2="69" y2="72" stroke="#1a3a5c" stroke-width="2.5" stroke-linecap="round" />
+  <line x1="37" y1="56" x2="63" y2="56" stroke="#1a3a5c" stroke-width="2.5" stroke-linecap="round" />
+  <line x1="39" y1="56" x2="47" y2="80" stroke="#1a3a5c" stroke-width="2" stroke-linecap="round" />
+  <line x1="61" y1="56" x2="53" y2="80" stroke="#1a3a5c" stroke-width="2" stroke-linecap="round" />
+  <!-- 顶部横担（绝缘挂点） -->
+  <line x1="40" y1="26" x2="60" y2="26" stroke="#1a3a5c" stroke-width="2.5" stroke-linecap="round" />
+  <!-- 顶部导线（左右拉线） -->
+  <line x1="28" y1="20" x2="42" y2="24" stroke="#cfe2f3" stroke-width="2.5" stroke-linecap="round" />
+  <line x1="72" y1="20" x2="58" y2="24" stroke="#cfe2f3" stroke-width="2.5" stroke-linecap="round" />
+  <!-- 底部接地线（两根电线） -->
+  <line x1="20" y1="92" x2="80" y2="92" stroke="#1a3a5c" stroke-width="2.5" stroke-linecap="round" />
+  <line x1="30" y1="96" x2="70" y2="96" stroke="#1a3a5c" stroke-width="2.5" stroke-linecap="round" />
+  <!-- 塔顶警示灯（黄色） -->
+  <circle cx="50" cy="13" r="4" fill="#ffd966" stroke="#1a3a5c" stroke-width="2" />
+</svg>

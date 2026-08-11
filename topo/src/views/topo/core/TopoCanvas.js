@@ -30,6 +30,7 @@ export default class TopoCanvas {
     // 连线模式
     this.linkMode = false
     this.linkSourceId = null
+    this.linkSourcePoint = null // 源点在节点上的本地坐标（相对节点左上角）
     this.tempLink = null
 
     // 缩放
@@ -233,8 +234,12 @@ export default class TopoCanvas {
     const s = this.getNode(link.source)
     const t = this.getNode(link.target)
     if (!s || !t) return ''
-    const sc = this._nodeCenter(s)
-    const tc = this._nodeCenter(t)
+    // 优先使用连接点在节点上的本地坐标（相对节点左上角，节点移动/缩放时端点跟随节点），
+    // 无连接点时回退到节点中心
+    const sp = link.data && link.data.sourcePoint
+    const tp = link.data && link.data.targetPoint
+    const sc = sp ? { x: s.x + sp.x, y: s.y + sp.y } : this._nodeCenter(s)
+    const tc = tp ? { x: t.x + tp.x, y: t.y + tp.y } : this._nodeCenter(t)
 
     if (link.type === 'curve') {
       const cp = (link.data && link.data.controlPoint) || {
@@ -386,8 +391,8 @@ export default class TopoCanvas {
     // 更新外层位置
     merged.attr('transform', (d) => `translate(${d.x}, ${d.y})`)
 
-    // 标签：line/busbar/text 不显示文本，放外层保持水平
-    const HIDE_LABEL_TYPES = ['line', 'busbar', 'text']
+    // 标签：line/busbar/text/rect 不显示文本，放外层保持水平
+    const HIDE_LABEL_TYPES = ['line', 'busbar', 'text', 'rect']
     merged
       .select('.topo-node-label')
       .text((d) => (HIDE_LABEL_TYPES.includes(d.type) ? '' : d.text || ''))
@@ -487,12 +492,9 @@ export default class TopoCanvas {
       merged
         .on('click', (event, d) => {
           event.stopPropagation()
-          // 连线模式：已选源节点时，点击其他节点即可完成连线
-          if (this.linkMode && this.linkSourceId) {
-            if (d.id !== this.linkSourceId) {
-              this._createLink(this.linkSourceId, d.id)
-            }
-            this._clearLinkSource()
+          // 连线模式：点击节点任意位置，可启动连线（无源时）或完成连线（有源且非本节点时）
+          if (this.linkMode) {
+            this._handleLinkNodeClick(d, event)
             return
           }
           this._selectNode(d.id)
@@ -520,6 +522,7 @@ export default class TopoCanvas {
       const rotatorG = d3.select(nodes[i]).select('.topo-node-rotator')
       rotatorG.selectAll('.topo-link-point').remove()
       if (this.linkMode) {
+        // 连接点仅作视觉提示（pointer-events:none），点击由节点任意位置统一处理
         rotatorG
           .append('circle')
           .attr('class', 'topo-link-point')
@@ -529,21 +532,9 @@ export default class TopoCanvas {
           .attr('fill', 'var(--accent-cyan)')
           .attr('stroke', '#fff')
           .attr('stroke-width', 1.5)
-          .style('cursor', 'crosshair')
+          .style('pointer-events', 'none')
           .style('filter', 'drop-shadow(0 0 6px var(--accent-cyan-glow))')
           .style('opacity', d.id === this.linkSourceId ? 1 : 0.6)
-          .on('click', (event, dd) => {
-            event.stopPropagation()
-            // 已有源节点时，点击其他节点的连接点直接完成连线
-            if (this.linkSourceId) {
-              if (dd.id !== this.linkSourceId) {
-                this._createLink(this.linkSourceId, dd.id)
-              }
-              this._clearLinkSource()
-              return
-            }
-            this._startLinkFrom(dd.id)
-          })
       }
     })
   }
@@ -618,6 +609,23 @@ export default class TopoCanvas {
       return
     }
 
+    if (type === 'rect') {
+      // 矩形框：无背景色，仅描边；描边颜色/宽度/虚线均可由右侧面板配置
+      const color = (node.style && node.style.stroke) || '#ffffff'
+      const strokeWidth = (node.style && node.style.strokeWidth) || 1
+      const dasharray = (node.style && node.style.dasharray) || ''
+      selection
+        .append('rect')
+        .attr('width', node.width)
+        .attr('height', node.height)
+        .attr('rx', 2)
+        .attr('fill', 'none')
+        .attr('stroke', color)
+        .attr('stroke-width', strokeWidth)
+        .attr('stroke-dasharray', dasharray)
+      return
+    }
+
     if (type === 'text') {
       // 字号随节点高度等比缩放，最小12px
       const baseSize = (node.style && node.style.fontSize) || node.baseFontSize || 12
@@ -668,38 +676,47 @@ export default class TopoCanvas {
   }
 
   /**
-   * 渲染电池类节点（stack/cluster）：外壳 + 顶部小帽 + 渐变填充。
+   * 渲染电池类节点（stack/cluster）：参考 battery.svg 风格（电池主体 + 灰色盖 + 极耳 + 闪电），
+   * 并叠加 SOC 电量填充区与充放电动效。
    * 填充高度由 node.data.batterySoc（0-1）控制，充放电动效由 AnimationManager 驱动。
    * @param {d3.Selection} selection 节点内容组
    * @param {Object} node 节点数据
    */
   _renderBatteryNode(selection, node) {
-    // 电池以 viewBox 0 0 72 72 绘制：外壳 M14 12H58V68H14z，填充区 y 24-68(高44)
+    // 电池以 viewBox 0 0 72 72 绘制：主体 M14 12H58V68H14z，填充区 y 24-68(高44)
     // 用 <g> 包裹并按节点宽高等比缩放居中，保证随节点尺寸变化且不失真
     const scale = Math.min(node.width / 72, node.height / 72)
     const offsetX = (node.width - 72 * scale) / 2
     const offsetY = (node.height - 72 * scale) / 2
     const box = selection.append('g').attr('class', 'topo-battery').attr('transform', `translate(${offsetX},${offsetY}) scale(${scale})`)
 
-    // 外壳（描边）
+    // 左右极耳（红色负极 / 蓝色正极），参考 battery.svg
+    box.append('rect').attr('class', 'topo-battery-terminal-neg')
+      .attr('x', 24).attr('y', 6).attr('width', 7).attr('height', 6)
+      .attr('fill', '#c0392b').attr('stroke', '#1a3a5c').attr('stroke-width', 1.5)
+    box.append('rect').attr('class', 'topo-battery-terminal-pos')
+      .attr('x', 41).attr('y', 6).attr('width', 7).attr('height', 6)
+      .attr('fill', '#3b6ea5').attr('stroke', '#1a3a5c').attr('stroke-width', 1.5)
+    // 顶部灰色电池盖，参考 battery.svg
+    box
+      .append('path')
+      .attr('class', 'topo-battery-cap')
+      .attr('d', 'M26 4H46V12H26z')
+      .attr('fill', '#9aa7b3')
+      .attr('stroke', '#1a3a5c')
+      .attr('stroke-width', 2)
+      .attr('stroke-linecap', 'square')
+    // 电池主体（外壳描边），参考 battery.svg
     box
       .append('path')
       .attr('class', 'topo-battery-body')
       .attr('d', 'M14 12H58V68H14z')
-      .attr('fill', '#1a2236')
-      .attr('stroke', 'rgba(0,253,67,0.75)')
-      .attr('stroke-width', 2)
+      .attr('fill', '#021633')
+      .attr('stroke', '#1a3a5c')
+      .attr('stroke-width', 2.5)
       .attr('stroke-linecap', 'square')
-    // 顶部小帽（填充背景色）
-    box
-      .append('path')
-      .attr('class', 'topo-battery-cap')
-      .attr('d', 'M28 4H44V12H28z')
-      .attr('fill', '#1a2236')
-      .attr('stroke', 'rgba(0,253,67,0.75)')
-      .attr('stroke-width', 2)
-      .attr('stroke-linecap', 'square')
-    // 填充区（SOC 高度），纯色，颜色由 SOC 分档决定（初始用默认绿）
+      .attr('stroke-linejoin', 'round')
+    // SOC 电量填充区：叠加在主体内部，颜色由 SOC 分档决定（红/橙/绿）
     box
       .append('rect')
       .attr('class', 'topo-battery-fill')
@@ -708,6 +725,16 @@ export default class TopoCanvas {
       .attr('y', 68)
       .attr('height', 0)
       .attr('rx', 0)
+    // 中央闪电符号（黑色，参考 battery.svg），绘制在电量填充之上保持始终可见
+    box
+      .append('path')
+      .attr('class', 'topo-battery-bolt')
+      .attr('d', 'M37 32 L28 46 L33 46 L31 60 L44 44 L38 44 Z')
+      .attr('fill', '#1a3a5c')
+      .attr('stroke', '#1a3a5c')
+      .attr('stroke-width', 1)
+      .attr('stroke-linejoin', 'round')
+      .attr('opacity', 0.5)
 
     // 记录节点电池状态（soc 0-1，charge 1/-1/0），供 AnimationManager 驱动
     if (!node.data) node.data = {}
@@ -1080,6 +1107,7 @@ export default class TopoCanvas {
   setLinkMode(enabled) {
     this.linkMode = enabled
     this.linkSourceId = null
+    this.linkSourcePoint = null
     this.tempLink = null
     this.overlayG.selectAll('*').remove()
     this.svg.style('cursor', enabled ? 'crosshair' : this.readonly ? 'grab' : 'default')
@@ -1087,22 +1115,55 @@ export default class TopoCanvas {
     this.emit('linkModeChange', { enabled })
   }
 
-  _startLinkFrom(nodeId) {
+  /**
+   * 连线模式下点击节点：无源节点时启动连线（记录点击位置为源点），
+   * 已有源且点击的是其他节点时完成连线（记录点击位置为目标点）。
+   * 连接点以节点本地坐标（相对节点左上角）存储，节点移动/缩放时端点跟随节点。
+   * @param {Object} node 被点击的节点
+   * @param {Event} event DOM 鼠标事件
+   */
+  _handleLinkNodeClick(node, event) {
+    const pt = this._eventToCanvasCoords(event)
+    if (!this.linkSourceId) {
+      this._startLinkFrom(node.id, pt)
+    } else if (node.id !== this.linkSourceId) {
+      this._createLink(this.linkSourceId, node.id, pt)
+      this._clearLinkSource()
+    }
+  }
+
+  /**
+   * 将 DOM 鼠标事件坐标转换为画布（zoomG）坐标系下的绝对坐标。
+   * @param {Event} event DOM 鼠标事件
+   * @returns {{x: number, y: number}}
+   */
+  _eventToCanvasCoords(event) {
+    const [x, y] = d3.pointer(event, this.zoomG.node())
+    return { x, y }
+  }
+
+  _startLinkFrom(nodeId, point) {
     this.linkSourceId = nodeId
+    const node = this.getNode(nodeId)
+    // 源点转节点本地坐标（相对节点左上角），缺省用中心点
+    this.linkSourcePoint = point
+      ? { x: point.x - node.x, y: point.y - node.y }
+      : { x: node.width / 2, y: node.height / 2 }
     this._renderNodes()
     // 监听整图画布鼠标移动，绘制临时连线
     const self = this
     this.svg.on('mousemove.link', function (event) {
       if (!self.linkSourceId) return
       const [mx, my] = d3.pointer(event, self.zoomG.node())
-      self._drawTempLink(nodeId, { x: mx, y: my })
+      self._drawTempLink({ x: mx, y: my })
     })
   }
 
-  _drawTempLink(sourceId, mouse) {
-    const source = this.getNode(sourceId)
-    if (!source) return
-    const sc = this._nodeCenter(source)
+  _drawTempLink(mouse) {
+    const source = this.getNode(this.linkSourceId)
+    if (!source || !this.linkSourcePoint) return
+    // 源点画布绝对坐标 = 节点坐标 + 本地连接点
+    const sc = { x: source.x + this.linkSourcePoint.x, y: source.y + this.linkSourcePoint.y }
     this.overlayG.selectAll('*').remove()
     this.overlayG
       .append('line')
@@ -1122,23 +1183,33 @@ export default class TopoCanvas {
     // 临时连线在 mousemove 中实时重绘
   }
 
-  _createLink(sourceId, targetId) {
+  _createLink(sourceId, targetId, targetPoint) {
     // 避免重复连线
     const exists = this.links.find((l) => l.source === sourceId && l.target === targetId)
     if (exists) return
+    // 目标点转节点本地坐标（相对节点左上角），缺省用 null（回退到中心点）
+    const tNode = this.getNode(targetId)
+    let tp = null
+    if (targetPoint && tNode) {
+      tp = { x: targetPoint.x - tNode.x, y: targetPoint.y - tNode.y }
+    }
     const link = {
       id: `link_${Date.now()}${Math.floor(Math.random() * 1000)}`,
       source: sourceId,
       target: targetId,
       type: 'straight',
       style: { stroke: '#666', strokeWidth: 2 },
-      data: {}
+      data: {
+        sourcePoint: this.linkSourcePoint || null,
+        targetPoint: tp
+      }
     }
     this.addLink(link)
   }
 
   _clearLinkSource() {
     this.linkSourceId = null
+    this.linkSourcePoint = null
     this.overlayG.selectAll('*').remove()
     this.svg.on('mousemove.link', null)
     this._renderNodes()

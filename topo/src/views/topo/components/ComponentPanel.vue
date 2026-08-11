@@ -52,6 +52,7 @@ function placeholderStyle(key) {
   const c = config[key]
   if (key === 'line') return { width: '28px', height: '1.5px', background: c.strokeColor, borderRadius: '1px' }
   if (key === 'text') return { width: '28px', height: '14px', background: 'transparent', border: '1px dashed var(--border-strong)', borderRadius: '2px' }
+  if (key === 'rect') return { width: '26px', height: '20px', background: 'transparent', border: '1.5px solid var(--text-secondary)', borderRadius: '2px' }
   return { width: '24px', height: '24px', background: c.strokeColor || 'var(--border-strong)', borderRadius: '2px' }
 }
 </script>
