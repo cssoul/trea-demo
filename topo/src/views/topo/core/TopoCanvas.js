@@ -329,14 +329,33 @@ export default class TopoCanvas {
     const sel = this.nodesG.selectAll('g.topo-node').data(this.nodes, (d) => d.id)
     sel.exit().remove()
 
+    // 编辑器装饰层结构：
+    //   g.topo-node           ← 仅作为容器 + 拖动入口（translate 到节点左上角）
+    //   └─ g.topo-node-rotator  ← 编辑器装饰层（应用 d.rotate 整体旋转）
+    //      ├─ text.topo-node-label     ← 元素 label，跟随元素一起旋转
+    //      ├─ g.topo-node-content      ← 元素内容（图标/电池/矩形等）
+    //      ├─ rect.topo-node-selection ← 选中框（绿色边框，包住元素）
+    //      ├─ image.topo-node-alarm    ← 告警图标
+    //      ├─ g.topo-node-handles      ← 4 角缩放手柄
+    //      └─ g.topo-rot-handles       ← 旋转手柄：杆 + 圆点 + 图标（位于选中框外固定偏移处）
+    //
+    // 设计要点：
+    //  - 选中框、4 角手柄、旋转手柄 是"一个整体"，对 rotator 应用 d.rotate 后整体旋转到当前角度
+    //  - 元素内容、label 跟随 rotator 一起旋转（label 即便在元素外也会跟随一起转）
+    //  - 旋转圆点位置固定在选中框外 -y 方向固定偏移，不依赖元素尺寸：
+    //      选中框上沿 y = -4；圆点 y = -4 - 8 - 7 = -19（圆心距选中框外沿 8px）
+    //      杆从 (cx, -4) 到 (cx, -19)。这样元素放大时手柄不会跑到选中框里
     const enter = sel
       .enter()
       .append('g')
       .attr('class', 'topo-node')
       .style('cursor', this.readonly ? 'pointer' : 'move')
 
-    // 文本标签（line/busbar/text 不显示），放在外层（不参与旋转）
-    enter
+    // 旋转子组 = 编辑器装饰层（核心）
+    const rotatorEnter = enter.append('g').attr('class', 'topo-node-rotator')
+
+    // label：line/busbar/text/rect 不显示文本；放在 rotator 内跟元素一起旋转
+    rotatorEnter
       .append('text')
       .attr('class', 'topo-node-label')
       .attr('text-anchor', 'middle')
@@ -347,13 +366,31 @@ export default class TopoCanvas {
       .style('pointer-events', 'none')
       .style('user-select', 'none')
 
-    // 旋转子组：内容、选中框、告警框、缩放手柄都放在这里，整体一起旋转
-    enter.append('g').attr('class', 'topo-node-rotator')
-
-    // 外层旋转句柄组（杆子 + 圆点），不跟随元素旋转，位置根据当前旋转角度计算，始终指向鼠标方向
+    // 编辑器模式：在 rotator 内创建 4 角缩放手柄 + 旋转手柄
     if (!this.readonly) {
-      const rotHandleG = enter.append('g').attr('class', 'topo-rot-handles').style('opacity', 0)
-      // 旋转杆（直线）
+      // 4 角缩放手柄（贴在选中框的 4 角外侧）
+      const handlesG = rotatorEnter
+        .append('g')
+        .attr('class', 'topo-node-handles')
+        .style('opacity', 0)
+      ;['nw', 'ne', 'sw', 'se'].forEach((pos) => {
+        handlesG
+          .append('rect')
+          .attr('class', `topo-handle topo-handle-${pos}`)
+          .attr('width', 8)
+          .attr('height', 8)
+          .attr('fill', 'var(--accent-amber)')
+          .attr('stroke', '#fff')
+          .attr('stroke-width', 1)
+          .style('cursor', this._handleCursor(pos))
+      })
+
+      // 旋转手柄（杆 + 圆点 + 图标，跟选中框/4 角一起随 rotator 旋转）
+      const rotHandleG = rotatorEnter
+        .append('g')
+        .attr('class', 'topo-rot-handles')
+        .style('opacity', 0)
+      // 旋转杆（虚线连接选中框上沿到圆点中心）
       rotHandleG
         .append('line')
         .attr('class', 'topo-rot-line')
@@ -362,7 +399,7 @@ export default class TopoCanvas {
         .attr('stroke-dasharray', '3 2')
         .attr('opacity', 0.6)
         .style('pointer-events', 'none')
-      // 旋转圆点
+      // 旋转圆点（拖动 cursor=grab）
       rotHandleG
         .append('circle')
         .attr('class', 'topo-handle topo-handle-rotate')
@@ -388,28 +425,29 @@ export default class TopoCanvas {
 
     const merged = enter.merge(sel)
 
-    // 更新外层位置
+    // 更新外层位置（topo-node 仅作为 translate 容器，drag 行为直接修改它）
     merged.attr('transform', (d) => `translate(${d.x}, ${d.y})`)
 
-    // 标签：line/busbar/text/rect 不显示文本，放外层保持水平
+    // 编辑器装饰层渲染：内容、label、选中框、告警、4 角手柄、旋转手柄 全部在 rotator 内
     const HIDE_LABEL_TYPES = ['line', 'busbar', 'text', 'rect']
-    merged
-      .select('.topo-node-label')
-      .text((d) => (HIDE_LABEL_TYPES.includes(d.type) ? '' : d.text || ''))
-      .attr('x', (d) => d.width / 2)
-      .attr('y', (d) => d.height + 16)
-
-    // 旋转子组渲染内容、选中框、告警框、手柄
     merged.each((d, i, nodes) => {
       const nodeG = d3.select(nodes[i])
       const rotatorG = nodeG.select('.topo-node-rotator')
 
-      // 内容组（首次进入时不存在才创建）
+      // label：line/busbar/text/rect 不显示文本
+      rotatorG
+        .select('.topo-node-label')
+        .text(() => (HIDE_LABEL_TYPES.includes(d.type) ? '' : d.text || ''))
+        .attr('x', d.width / 2)
+        .attr('y', d.height + 16)
+
+      // 内容组：首次进入时不存在才创建
       let contentG = rotatorG.select('.topo-node-content')
       if (contentG.empty()) {
         contentG = rotatorG.append('g').attr('class', 'topo-node-content')
       }
       this._renderNodeContent(contentG, d)
+
       // 选中框（首次进入时创建）
       let selectionG = rotatorG.select('.topo-node-selection')
       if (selectionG.empty()) {
@@ -421,6 +459,15 @@ export default class TopoCanvas {
           .attr('stroke-width', 1.5)
           .attr('opacity', 0)
       }
+      // 选中框尺寸 + 位置（-4 边距包住元素）
+      selectionG
+        .attr('x', -4)
+        .attr('y', -4)
+        .attr('width', d.width + 8)
+        .attr('height', d.height + 8)
+        .attr('rx', 4)
+        .attr('opacity', d.id === this.selectedNodeId ? 1 : 0)
+
       // 告警指示（右上角闪烁图标，使用 alarm.png 图片）
       let alarmG = rotatorG.select('.topo-node-alarm')
       if (alarmG.empty()) {
@@ -431,21 +478,6 @@ export default class TopoCanvas {
           .attr('preserveAspectRatio', 'xMidYMid meet')
           .attr('opacity', 0)
       }
-
-      // 应用旋转（围绕节点中心）
-      const angle = d.rotate || 0
-      rotatorG.attr('transform', `rotate(${angle} ${d.width / 2} ${d.height / 2})`)
-
-      // 选中框尺寸 + 位置（-4 边距包住元素）
-      selectionG
-        .attr('x', -4)
-        .attr('y', -4)
-        .attr('width', d.width + 8)
-        .attr('height', d.height + 8)
-        .attr('rx', 4)
-        .attr('opacity', d.id === this.selectedNodeId ? 1 : 0)
-
-      // 告警图标
       const alarmSize = Math.max(24, Math.min(40, Math.min(d.width, d.height) * 0.4))
       alarmG
         .attr('width', alarmSize)
@@ -453,37 +485,23 @@ export default class TopoCanvas {
         .attr('x', d.width / 2)
         .attr('y', d.height / 2 - alarmSize)
 
-      // 4 角缩放手柄（放在旋转子组内跟随元素一起旋转）
-      if (!this.readonly) {
-        let handlesG = rotatorG.select('.topo-node-handles')
-        if (handlesG.empty()) {
-          handlesG = rotatorG.append('g').attr('class', 'topo-node-handles').style('opacity', 0)
-          ;['nw', 'ne', 'sw', 'se'].forEach((pos) => {
-            handlesG
-              .append('rect')
-              .attr('class', `topo-handle topo-handle-${pos}`)
-              .attr('width', 8)
-              .attr('height', 8)
-              .attr('fill', 'var(--accent-amber)')
-              .attr('stroke', '#fff')
-              .attr('stroke-width', 1)
-              .style('cursor', this._handleCursor(pos))
-          })
-        }
-        // 仅选中时显示并启用手柄；未选中时禁用 pointer-events
-        const isSelected = d.id === this.selectedNodeId
-        handlesG.style('opacity', isSelected ? 1 : 0)
-        handlesG.style('pointer-events', isSelected ? 'all' : 'none')
-        // 4 角缩放手柄位置：贴在选中框四个角
-        handlesG.select('.topo-handle-nw').attr('x', -8).attr('y', -8)
-        handlesG.select('.topo-handle-ne').attr('x', d.width - 0).attr('y', -8)
-        handlesG.select('.topo-handle-sw').attr('x', -8).attr('y', d.height - 0)
-        handlesG.select('.topo-handle-se').attr('x', d.width - 0).attr('y', d.height - 0)
-      }
+      // 应用旋转（围绕节点中心），选中框/4 角/旋转手柄/内容/label 全部跟随旋转
+      const angle = d.rotate || 0
+      rotatorG.attr('transform', `rotate(${angle} ${d.width / 2} ${d.height / 2})`)
 
-      // 外层旋转句柄位置：杆子 + 圆点始终指向当前旋转角度方向，跟随鼠标，避免旋转时闪烁
+      // 编辑器模式下：4 角缩放手柄 + 旋转手柄的位置与显隐更新
       if (!this.readonly) {
-        this._updateRotHandle(nodeG, d)
+        // 4 角缩放手柄：仅选中时显示并启用；位置贴在选中框 4 角
+        const handlesG = rotatorG.select('.topo-node-handles')
+        const isSelected = d.id === this.selectedNodeId
+        handlesG.style('opacity', isSelected ? 1 : 0).style('pointer-events', isSelected ? 'all' : 'none')
+        handlesG.select('.topo-handle-nw').attr('x', -8).attr('y', -8)
+        handlesG.select('.topo-handle-ne').attr('x', d.width).attr('y', -8)
+        handlesG.select('.topo-handle-sw').attr('x', -8).attr('y', d.height)
+        handlesG.select('.topo-handle-se').attr('x', d.width).attr('y', d.height)
+
+        // 旋转手柄：位置固定在选中框外侧 -y 方向，由 rotator 整体旋转带动指向当前角度
+        this._updateRotHandle(rotatorG, d)
       }
     })
 
@@ -506,9 +524,9 @@ export default class TopoCanvas {
           this.emit('contextmenu', { event, node: d, x: event.offsetX, y: event.offsetY })
         })
         .call(this._nodeDragBehavior())
-      // 缩放手柄拖拽
+      // 缩放手柄拖拽（4 角 rect，位于 rotator 内）
       merged.selectAll('.topo-handle-nw, .topo-handle-ne, .topo-handle-sw, .topo-handle-se').call(this._resizeBehavior())
-      // 旋转句柄（上方圆点）拖拽旋转
+      // 旋转句柄（圆点）拖拽旋转（位于 rotator 内）
       merged.selectAll('.topo-handle-rotate').call(this._rotateBehavior())
     } else {
       merged.on('click', (event, d) => {
@@ -544,29 +562,23 @@ export default class TopoCanvas {
   }
 
   /**
-   * 更新外层旋转句柄（杆子 + 圆点）的位置。
-   * 圆点沿元素中心按当前旋转角度方向放置（始终指向鼠标），距离固定，
-   * 从而避免旋转时圆点被旋转子组带着一起转导致的抖动/闪烁。
-   * @param {d3.Selection} nodeG 外层 g（topo-node，已 translate 到节点左上角）
+   * 更新旋转手柄（杆 + 圆点 + 图标）的位置。
+   * 旋转手柄组已在 rotator 子组内，会随 rotator 整体旋转，位置不需要再按角度计算。
+   *
+   * @param {d3.Selection} rotatorG 旋转子组（topo-node-rotator）
    * @param {Object} d 节点数据
    */
-  _updateRotHandle(nodeG, d) {
-    const rotHandleG = nodeG.select('.topo-rot-handles')
+  _updateRotHandle(rotatorG, d) {
+    const rotHandleG = rotatorG.select('.topo-rot-handles')
+    // 仅选中时显示旋转手柄
     rotHandleG.style('opacity', d.id === this.selectedNodeId ? 1 : 0)
-    // 圆点到元素中心的距离：基础距离 max(w,h)/2 + 28 保证在元素外，
-    // 但对于很宽的母线/直线，句柄会过长，限制最大 60px
-    const ROT_RADIUS = Math.min(Math.max(d.width, d.height) / 2 + 28, 60)
-    const theta = ((d.rotate || 0) * Math.PI) / 180
-    // 元素中心局部坐标
+    // 固定在选中框外上方，不随元素尺寸变化
     const cx = d.width / 2
-    const cy = d.height / 2
-    // 0°=顶部(-y)，顺时针：x 偏移 +R*sin，y 偏移 -R*cos
-    const hx = cx + ROT_RADIUS * Math.sin(theta)
-    const hy = cy - ROT_RADIUS * Math.cos(theta)
-    rotHandleG.select('.topo-handle-rotate').attr('cx', hx).attr('cy', hy)
-    rotHandleG.select('.topo-rot-icon').attr('x', hx).attr('y', hy + 0.5)
-    // 杆子：从元素中心到圆点
-    rotHandleG.select('.topo-rot-line').attr('x1', cx).attr('y1', cy).attr('x2', hx).attr('y2', hy)
+    const dotY = -34
+    rotHandleG.select('.topo-handle-rotate').attr('cx', cx).attr('cy', dotY)
+    rotHandleG.select('.topo-rot-icon').attr('x', cx).attr('y', dotY + 0.5)
+    // 杆：从选中框上沿中心到圆点中心
+    rotHandleG.select('.topo-rot-line').attr('x1', cx).attr('y1', -4).attr('x2', cx).attr('y2', dotY)
   }
 
   // ---- 单个节点内容渲染 ----
@@ -912,36 +924,101 @@ export default class TopoCanvas {
       })
   }
 
-  // ============ 旋转手柄（外层圆点拖动，元素跟随鼠标角度旋转） ============
+  // ============ 旋转手柄 ============
+  // 圆点固定在 rotator 顶部（本地 0° 方向），容器用 g.topo-node（仅有 translate，CTM 旋转中不变，
+  // 坐标稳定），元素中心与旋转中心一致，圆点能稳定跟手、不依赖 zoom。
+  //
+  // 抗抖动策略（不加 debounce，避免滞后破坏实时跟手）：
+  //   1. 启动阈值：鼠标偏离起始圆点 >= 6px 才进入旋转
+  //   2. 鼠标在元素内：完全停止旋转
+  //   3. 近中心稳定区：不更新角度但同步方向基准，避免贴边/穿心时角度跳变错乱
+  //   4. 角度增量 + 最短路径：每帧累加鼠标方向角增量并归一化，保证连续移动角度方向正确
   _rotateBehavior() {
     const self = this
+    const START_THRESHOLD = 6 // 启动阈值：鼠标偏离起始圆点至少 6px 才进入旋转
+    // 闭包变量：拖动过程中的状态
+    let startMouseX = 0 // 起始鼠标本地 x（node 本地坐标）
+    let startMouseY = 0 // 起始鼠标本地 y
+    let startAngle = 0 // 起始旋转角度（d.rotate）
+    let dragging = false // 是否已进入旋转态
+    let lastMouseAngle = 0 // 上一帧有效角度计算用的鼠标方向角（未取模，范围 -180~180）
+    let lastAppliedAngle = 0 // 上一次应用的旋转角度
+    let minRadius = 0 // 最小有效半径，start 时按元素尺寸计算
     return d3
       .drag()
-      .on('start', function (event) {
+      // DOM 层级：.topo-handle-rotate → .topo-rot-handles → .topo-node-rotator → .topo-node
+      .container(function () {
+        return this.parentNode.parentNode.parentNode
+      })
+      .on('start', function (event, d) {
         event.sourceEvent.stopPropagation()
-        d3.select(this.parentNode).raise()
+        // 提高整个节点层级（避免被其他节点遮挡）
+        d3.select(this.parentNode.parentNode.parentNode).raise()
+        // 步骤 2：记录起始状态（圆点高亮，但元素不旋转）
+        startMouseX = event.x
+        startMouseY = event.y
+        startAngle = d.rotate || 0
+        dragging = false
+        lastAppliedAngle = startAngle
+        // 元素外接圆半径作为最小有效旋转半径（覆盖元素中心附近的不稳定区）
+        minRadius = Math.sqrt((d.width / 2) * (d.width / 2) + (d.height / 2) * (d.height / 2))
+        // 记录起始鼠标方向角（atan2 原始值，范围 -180~180），作为角度增量的基准
+        lastMouseAngle = (Math.atan2(event.y - d.height / 2, event.x - d.width / 2) * 180) / Math.PI
       })
       .on('drag', function (event, d) {
         event.sourceEvent.stopPropagation()
-        const cx = d.x + d.width / 2
-        const cy = d.y + d.height / 2
-        // 鼠标相对节点中心的角度，顶部为 0°，顺时针为正
-        let angle = (Math.atan2(event.y - cy, event.x - cx) * 180) / Math.PI + 90
-        angle = (angle + 360) % 360
-        d.rotate = angle
-        // 圆点位于外层 topo-rot-handles，其父节点是 topo-node（已 translate），再查其内的 rotator
-        const nodeG = d3.select(this.parentNode.parentNode)
-        const rotatorG = nodeG.select('.topo-node-rotator')
-        if (!rotatorG.empty()) {
-          rotatorG.attr('transform', `rotate(${angle} ${d.width / 2} ${d.height / 2})`)
+        // 步骤 3：鼠标在元素内 → 完全停止旋转（避免误操作）
+        const insideElement = event.x >= 0 && event.x <= d.width && event.y >= 0 && event.y <= d.height
+        if (insideElement) {
+          return
         }
-        // 同步更新外层旋转句柄位置，让圆点始终指向鼠标方向
-        self._updateRotHandle(nodeG, d)
+        const cx = d.width / 2
+        const cy = d.height / 2
+        // 步骤 3→4：启动阈值判断（鼠标明显偏离起始圆点才进入旋转态）
+        if (!dragging) {
+          const dx = event.x - startMouseX
+          const dy = event.y - startMouseY
+          if (dx * dx + dy * dy < START_THRESHOLD * START_THRESHOLD) {
+            return
+          }
+          dragging = true
+        }
+        // 步骤 4→5：计算鼠标相对元素中心的方向角（范围 -180~180）。
+        // 角度只由鼠标相对中心的方向决定，与距离无关。
+        const rx = event.x - cx
+        const ry = event.y - cy
+        const radius = Math.sqrt(rx * rx + ry * ry)
+        const mouseAngle = (Math.atan2(ry, rx) * 180) / Math.PI
+        // 近中心稳定性处理：
+        // 鼠标落到元素中心附近的"不稳定区"（半径 < 外接圆半径）时，方向对位置极敏感，
+        // 微小的位移就会产生很大的角度变化（甚至穿过中心时 ±180° 反转），导致旋转错乱。
+        // 此时不更新旋转角度（保持上一次角度），但同步更新 lastMouseAngle 方向基准，
+        // 保证鼠标离开近区后角度增量连续、平滑衔接，不产生跳变。
+        if (radius < minRadius) {
+          lastMouseAngle = mouseAngle
+          return
+        }
+        // 角度增量 + 最短路径：每帧累加鼠标方向角的变化量，归一化到 [-180,180]，
+        // 保证鼠标连续移动时角度增量最小、方向正确，避免 ±180° 跳变错乱
+        let delta = mouseAngle - lastMouseAngle
+        if (delta > 180) delta -= 360
+        else if (delta < -180) delta += 360
+        lastMouseAngle = mouseAngle
+        const angle = (lastAppliedAngle + delta + 360) % 360
+        lastAppliedAngle = angle
+        d.rotate = angle
+        // 应用 rotate 到 rotator（选中框、4 角、旋转手柄、内容、label 整体随之旋转）
+        const rotatorG = d3.select(this.parentNode.parentNode)
+        rotatorG.attr('transform', `rotate(${angle} ${cx} ${cy})`)
         // 实时通知面板
         self.emit('nodeRotate', { node: d })
       })
       .on('end', function (event, d) {
         event.sourceEvent.stopPropagation()
+        // 步骤 6：完成旋转，保持当前角度；若无任何拖动，保留 startAngle
+        if (!dragging) {
+          d.rotate = startAngle
+        }
         self.emit('nodeRotateEnd', { node: d })
       })
   }
