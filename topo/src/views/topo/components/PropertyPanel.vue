@@ -51,8 +51,19 @@
               <a-input-number v-model:value="form.height" :min="2" @change="emitChange('height', form.height)" style="width: 100%" />
             </a-form-item>
           </div>
-          <a-form-item label="旋转角度 (°)">
-            <span class="prop-rotate mono">{{ form.rotate.toFixed(1) }}°</span>
+          <a-form-item label="旋转角度">
+            <div class="rotate-row">
+              <a-slider
+                v-model:value="form.rotate"
+                :min="0"
+                :max="359"
+                :step="1"
+                :tip-formatter="(v) => `${v}°`"
+                @change="emitChange('rotate', form.rotate)"
+                style="flex:1"
+              />
+              <span class="prop-rotate mono">{{ Math.round(form.rotate) }}°</span>
+            </div>
           </a-form-item>
         </a-form>
       </div>
@@ -489,6 +500,15 @@ function onDashChange() {
   color: var(--accent-cyan);
   font-size: 14px;
   font-weight: 600;
+  min-width: 52px;
+  text-align: right;
+}
+
+.rotate-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
 }
 
 .prop-row {

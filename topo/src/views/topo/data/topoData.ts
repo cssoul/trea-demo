@@ -280,6 +280,32 @@ export const topoGraphData: TopoGraphData = {
       initialWidth: 60,
       initialHeight: 60,
       baseFontSize: 12
+    },
+    {
+      id: 'node_grid001',
+      type: 'grid',
+      x: 55,
+      y: 375,
+      width: 70,
+      height: 70,
+      text: '电网',
+      icon: '/imgs/grid.svg',
+      data: {
+        deviceType: 'grid',
+        bindable: true,
+        binding: {
+          deviceId: 'grid001',
+          deviceType: 'grid',
+          deviceName: '电网-1',
+          parentDeviceId: null
+        }
+      },
+      style: {},
+      zIndex: 9,
+      rotate: 0,
+      initialWidth: 70,
+      initialHeight: 70,
+      baseFontSize: 12
     }
   ],
   links: [
@@ -344,6 +370,14 @@ export const topoGraphData: TopoGraphData = {
       source: 'node_1770552053705',
       target: 'node_1770552313639',
       type: 'orthogonal',
+      style: { stroke: '#666', strokeWidth: 2 },
+      data: {}
+    },
+    {
+      id: 'link_grid001',
+      source: 'node_grid001',
+      target: 'node_1770552053705',
+      type: 'straight',
       style: { stroke: '#666', strokeWidth: 2 },
       data: {}
     }

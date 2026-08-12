@@ -26,7 +26,8 @@ const deviceStates: Record<string, { soc: number; power: number; status: string;
   pcs001: { soc: 0, power: 120, status: 'charging', alarm: false, phase: 0 },
   pcs002: { soc: 0, power: -85, status: 'discharging', alarm: false, phase: 0 },
   pv001: { soc: 0, power: 35, status: 'discharging', alarm: false, phase: 0 },
-  meter001: { soc: 0, power: 35, status: 'idle', alarm: false, phase: 0 }
+  meter001: { soc: 0, power: 35, status: 'idle', alarm: false, phase: 0 },
+  grid001: { soc: 0, power: 120, status: 'charging', alarm: false, phase: 0 }
 }
 
 const deviceNameMap: Record<string, string> = {
@@ -38,7 +39,8 @@ const deviceNameMap: Record<string, string> = {
   pcs001: 'PCS-1',
   pcs002: 'PCS-2',
   pv001: '光伏-1',
-  meter001: '关口表-1'
+  meter001: '关口表-1',
+  grid001: '电网-1'
 }
 
 const deviceTypeMap: Record<string, string> = {
@@ -50,7 +52,8 @@ const deviceTypeMap: Record<string, string> = {
   pcs001: 'pcs',
   pcs002: 'pcs',
   pv001: 'pv',
-  meter001: 'meter'
+  meter001: 'meter',
+  grid001: 'grid'
 }
 
 /**
@@ -60,6 +63,19 @@ function tick() {
   Object.keys(deviceStates).forEach((id) => {
     const s = deviceStates[id]
     s.phase += 1
+
+    // 电网：不是电池，SOC 恒为 0；在充放电状态间切换以驱动相连连线产生电流走向
+    if (id === 'grid001') {
+      s.soc = 0
+      // 周期性地在从电网取电(charging)/馈网(discharging)之间切换
+      if (s.phase % 40 === 0) {
+        s.status = Math.random() > 0.5 ? 'charging' : 'discharging'
+      }
+      s.power = s.status === 'charging' ? 120 + Math.sin(s.phase * 0.3) * 8 : -(85 + Math.sin(s.phase * 0.25) * 10)
+      // 随机告警
+      if (Math.random() < 0.01) s.alarm = !s.alarm
+      return
+    }
 
     if (s.status === 'charging') {
       s.soc = Math.min(100, s.soc + 0.4)
@@ -126,4 +142,5 @@ export function resetRealtimeData() {
   deviceStates.pcs002 = { soc: 0, power: -85, status: 'discharging', alarm: false, phase: 0 }
   deviceStates.pv001 = { soc: 0, power: 35, status: 'discharging', alarm: false, phase: 0 }
   deviceStates.meter001 = { soc: 0, power: 35, status: 'idle', alarm: false, phase: 0 }
+  deviceStates.grid001 = { soc: 0, power: 120, status: 'charging', alarm: false, phase: 0 }
 }
