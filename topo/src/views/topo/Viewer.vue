@@ -248,7 +248,11 @@ function initCanvas() {
   animManager.value = new AnimationManager(canvas.value, {
     pollInterval: 2500,
     dataFetcher: async () => {
-      return getRealtimeData()
+      const data = getRealtimeData()
+      // 同步更新 Vue 响应式数据（供 KPI 面板和详情弹窗使用）
+      realtimeData.value = data
+      lastUpdate.value = formatTime(new Date())
+      return data
     }
   })
 
@@ -282,26 +286,13 @@ function loadData() {
 }
 
 function startPolling() {
-  // 立即拉取一次
+  // 立即拉取一次并初始化显示
   const data = getRealtimeData()
   realtimeData.value = data
   lastUpdate.value = formatTime(new Date())
   animManager.value.applyDeviceData(data)
-  // 启动轮询
+  // 启动 AnimationManager 内置轮询（dataFetcher 中已同步更新 realtimeData 和 lastUpdate）
   animManager.value.start()
-  // 更新时间戳
-  setInterval(() => {
-    lastUpdate.value = formatTime(new Date())
-    realtimeData.value = { ...getRealtimeDataBuffer() }
-  }, 2500)
-}
-
-let buffer = {}
-function getRealtimeDataBuffer() {
-  buffer = getRealtimeData()
-  lastUpdate.value = formatTime(new Date())
-  animManager.value && animManager.value.applyDeviceData(buffer)
-  return buffer
 }
 
 function formatTime(d) {
