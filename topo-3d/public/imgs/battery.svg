@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 电池堆/簇图标：灰色外壳 + 绿色电量填充(约60%) + 正负极耳 + 中央闪电 -->
+  <!-- 顶部灰色电池盖 -->
+  <rect x="22" y="22" width="56" height="10" rx="2" ry="2"
+        fill="#9aa7b3" stroke="#1a3a5c" stroke-width="2" stroke-linejoin="round" />
+  <!-- 左右极耳（红色负极 / 蓝色正极） -->
+  <rect x="26" y="14" width="9" height="8" rx="1" ry="1" fill="#c0392b" stroke="#1a3a5c" stroke-width="2" />
+  <rect x="65" y="14" width="9" height="8" rx="1" ry="1" fill="#3b6ea5" stroke="#1a3a5c" stroke-width="2" />
+  <!-- 电池主体外壳（灰色底） -->
+  <rect x="18" y="32" width="64" height="52" rx="3" ry="3"
+        fill="#cfe2f3" stroke="#1a3a5c" stroke-width="2.5" stroke-linejoin="round" />
+  <!-- 绿色电量填充（约占主体高度 60%，从底部升起） -->
+  <rect x="21" y="53" width="58" height="31" rx="1.5" ry="1.5" fill="#00fd43" />
+  <!-- 中央闪电符号（半透明，叠加在电量填充之上） -->
+  <path d="M52 42 L42 56 L48 56 L46 70 L58 54 L52 54 Z"
+        fill="#1a3a5c" stroke="#1a3a5c" stroke-width="1.5" stroke-linejoin="round" opacity="0.5" />
+</svg>

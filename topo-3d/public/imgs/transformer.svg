@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 变压器：参考图1 风格，两个叠放圆环+底座（类似罐式变压器） -->
+  <!-- 底座 -->
+  <rect x="14" y="80" width="72" height="10" rx="2" ry="2"
+        fill="#9aa7b3" stroke="#1a3a5c" stroke-width="2" stroke-linejoin="round" />
+  <!-- 下层罐体 -->
+  <rect x="22" y="56" width="56" height="24" rx="4" ry="4"
+        fill="#cfe2f3" stroke="#1a3a5c" stroke-width="2.5" stroke-linejoin="round" />
+  <!-- 上层罐体 -->
+  <rect x="26" y="32" width="48" height="24" rx="4" ry="4"
+        fill="#cfe2f3" stroke="#1a3a5c" stroke-width="2.5" stroke-linejoin="round" />
+  <!-- 顶部套管（3 个绝缘子） -->
+  <rect x="34" y="22" width="6" height="10" fill="#9aa7b3" stroke="#1a3a5c" stroke-width="1.5" />
+  <rect x="47" y="22" width="6" height="10" fill="#9aa7b3" stroke="#1a3a5c" stroke-width="1.5" />
+  <rect x="60" y="22" width="6" height="10" fill="#9aa7b3" stroke="#1a3a5c" stroke-width="1.5" />
+  <!-- 罐体散热波纹线（下层） -->
+  <line x1="28" y1="64" x2="72" y2="64" stroke="#1a3a5c" stroke-width="1" opacity="0.6" />
+  <line x1="28" y1="72" x2="72" y2="72" stroke="#1a3a5c" stroke-width="1" opacity="0.6" />
+  <!-- 罐体散热波纹线（上层） -->
+  <line x1="32" y1="40" x2="68" y2="40" stroke="#1a3a5c" stroke-width="1" opacity="0.6" />
+  <line x1="32" y1="48" x2="68" y2="48" stroke="#1a3a5c" stroke-width="1" opacity="0.6" />
+  <!-- 高压闪电警示（中央） -->
+  <path d="M52 32 L46 42 L50 42 L48 52 L56 40 L52 40 Z"
+        fill="#f6b26b" stroke="#1a3a5c" stroke-width="1.2" stroke-linejoin="round" />
+</svg>

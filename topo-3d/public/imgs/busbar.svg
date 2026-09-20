@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- 母线：参考图1风格的扁平横条 -->
+  <rect x="6" y="44" width="88" height="12" rx="3" ry="3"
+        fill="#cfe2f3" stroke="#1a3a5c" stroke-width="2.5" stroke-linejoin="round" />
+  <rect x="6" y="48" width="88" height="2" fill="#ffffff" opacity="0.6" />
+</svg>
