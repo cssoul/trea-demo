@@ -1,2 +1,2 @@
 # 说明
-一些用 VibeCoding 实现的 demo
+一些用 Vibe Coding 实现的 DEMO。

@@ -73,7 +73,18 @@
           <span>SOC 进度</span>
         </div>
         <div class="legend-item">
-          <img class="legend-alarm" src="/imgs/alarm.png" alt="告警闪烁" />
+          <!-- 与画布内告警标记（红色倒锥 alarmMarker）同款造型 -->
+          <svg class="legend-alarm" viewBox="0 0 20 20" fill="none">
+            <defs>
+              <linearGradient id="legend-alarm-cone" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#f2666c" />
+                <stop offset="0.55" stop-color="#e0464c" />
+                <stop offset="1" stop-color="#a83238" />
+              </linearGradient>
+            </defs>
+            <path d="M2.6 7.2 L17.4 7.2 L10 18.6 Z" fill="url(#legend-alarm-cone)" />
+            <ellipse cx="10" cy="7.2" rx="7.4" ry="2.9" fill="#ef7a80" />
+          </svg>
           <span>告警闪烁</span>
         </div>
       </div>
@@ -539,9 +550,9 @@ function goEdit() {
 }
 
 .legend-alarm {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
   animation: blink-alarm 0.8s infinite;
 }
 
