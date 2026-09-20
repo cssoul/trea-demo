@@ -1,25 +1,46 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
-  <!-- 变压器：参考图1 风格，两个叠放圆环+底座（类似罐式变压器） -->
-  <!-- 底座 -->
-  <rect x="14" y="80" width="72" height="10" rx="2" ry="2"
-        fill="#9aa7b3" stroke="#1a3a5c" stroke-width="2" stroke-linejoin="round" />
-  <!-- 下层罐体 -->
-  <rect x="22" y="56" width="56" height="24" rx="4" ry="4"
-        fill="#cfe2f3" stroke="#1a3a5c" stroke-width="2.5" stroke-linejoin="round" />
-  <!-- 上层罐体 -->
-  <rect x="26" y="32" width="48" height="24" rx="4" ry="4"
-        fill="#cfe2f3" stroke="#1a3a5c" stroke-width="2.5" stroke-linejoin="round" />
-  <!-- 顶部套管（3 个绝缘子） -->
-  <rect x="34" y="22" width="6" height="10" fill="#9aa7b3" stroke="#1a3a5c" stroke-width="1.5" />
-  <rect x="47" y="22" width="6" height="10" fill="#9aa7b3" stroke="#1a3a5c" stroke-width="1.5" />
-  <rect x="60" y="22" width="6" height="10" fill="#9aa7b3" stroke="#1a3a5c" stroke-width="1.5" />
-  <!-- 罐体散热波纹线（下层） -->
-  <line x1="28" y1="64" x2="72" y2="64" stroke="#1a3a5c" stroke-width="1" opacity="0.6" />
-  <line x1="28" y1="72" x2="72" y2="72" stroke="#1a3a5c" stroke-width="1" opacity="0.6" />
-  <!-- 罐体散热波纹线（上层） -->
-  <line x1="32" y1="40" x2="68" y2="40" stroke="#1a3a5c" stroke-width="1" opacity="0.6" />
-  <line x1="32" y1="48" x2="68" y2="48" stroke="#1a3a5c" stroke-width="1" opacity="0.6" />
-  <!-- 高压闪电警示（中央） -->
-  <path d="M52 32 L46 42 L50 42 L48 52 L56 40 L52 40 Z"
-        fill="#f6b26b" stroke="#1a3a5c" stroke-width="1.2" stroke-linejoin="round" />
+  <title>变压器</title>
+  <desc>v2 iso: 油箱+散热片+瓷套管</desc>
+  <g transform="translate(50.00 71.81) scale(0.8981)">
+  <polygon points="-5.6,-59.2 19.3,-44.8 19.3,-57.8 -5.6,-72.2" fill="#d0d8e1" stroke="#5b6470" stroke-width="1.1" stroke-linejoin="round"/>
+  <circle cx="-13.9" cy="-62.2" r="2.2" fill="#d5dbe3" stroke="#5b6470" stroke-width="0.8"/>
+  <line x1="-13.9" y1="-57.8" x2="-13.9" y2="-61.4" stroke="#d5dbe3" stroke-width="4.0" stroke-linecap="round"/>
+  <polygon points="29.7,-37.4 4.6,-22.8 4.6,-25.4 29.7,-40.0" fill="#7c8794" stroke="#5b6470" stroke-width="1.1" stroke-linejoin="round"/>
+  <polygon points="-29.7,-42.6 4.6,-22.8 4.6,-25.4 -29.7,-45.2" fill="#939dab" stroke="#5b6470" stroke-width="1.1" stroke-linejoin="round"/>
+  <polygon points="-4.6,-59.8 29.7,-40.0 4.6,-25.4 -29.7,-45.2" fill="#a7b0bc" stroke="#5b6470" stroke-width="1.1" stroke-linejoin="round"/>
+  <circle cx="-4.6" cy="-56.8" r="2.2" fill="#d5dbe3" stroke="#5b6470" stroke-width="0.8"/>
+  <circle cx="19.3" cy="-51.3" r="6.5" fill="#b6bfcb" stroke="#5b6470" stroke-width="1.0"/>
+  <line x1="-13.9" y1="-45.8" x2="-13.9" y2="-57.8" stroke="#e2e6eb" stroke-width="5.0" stroke-linecap="round"/>
+  <line x1="-4.6" y1="-52.4" x2="-4.6" y2="-56.0" stroke="#d5dbe3" stroke-width="4.0" stroke-linecap="round"/>
+  <polygon points="27.0,-3.6 4.2,9.6 4.2,-24.4 27.0,-37.6" fill="#b6bfcb" stroke="#5b6470" stroke-width="1.3" stroke-linejoin="round"/>
+  <polygon points="-27.0,-8.4 4.2,9.6 4.2,-24.4 -27.0,-42.4" fill="#d0d8e1" stroke="#5b6470" stroke-width="1.3" stroke-linejoin="round"/>
+  <polygon points="-4.2,-55.6 27.0,-37.6 4.2,-24.4 -27.0,-42.4" fill="#e2e7ee" stroke="#5b6470" stroke-width="1.3" stroke-linejoin="round"/>
+  <line x1="-13.9" y1="-51.2" x2="-13.9" y2="-54.2" stroke="#c9cfd8" stroke-width="8.5" stroke-linecap="round"/>
+  <circle cx="4.8" cy="-51.4" r="2.2" fill="#d5dbe3" stroke="#5b6470" stroke-width="0.8"/>
+  <line x1="-4.6" y1="-40.4" x2="-4.6" y2="-52.4" stroke="#e2e6eb" stroke-width="5.0" stroke-linecap="round"/>
+  <line x1="4.8" y1="-47.0" x2="4.8" y2="-50.6" stroke="#d5dbe3" stroke-width="4.0" stroke-linecap="round"/>
+  <line x1="-13.9" y1="-47.4" x2="-13.9" y2="-50.4" stroke="#c9cfd8" stroke-width="8.5" stroke-linecap="round"/>
+  <line x1="-4.6" y1="-45.8" x2="-4.6" y2="-48.8" stroke="#c9cfd8" stroke-width="8.5" stroke-linecap="round"/>
+  <line x1="4.8" y1="-35.0" x2="4.8" y2="-47.0" stroke="#e2e6eb" stroke-width="5.0" stroke-linecap="round"/>
+  <line x1="-4.6" y1="-42.0" x2="-4.6" y2="-45.0" stroke="#c9cfd8" stroke-width="8.5" stroke-linecap="round"/>
+  <polygon points="-11.4,-23.5 -8.6,-21.9 -8.6,-43.0 -11.4,-44.6" fill="#c2c9d3" stroke="#5b6470" stroke-width="0.9" stroke-linejoin="round"/>
+  <line x1="4.8" y1="-40.4" x2="4.8" y2="-43.4" stroke="#c9cfd8" stroke-width="8.5" stroke-linecap="round"/>
+  <polygon points="-16.5,-20.5 -13.8,-18.9 -13.8,-40.0 -16.5,-41.6" fill="#c2c9d3" stroke="#5b6470" stroke-width="0.9" stroke-linejoin="round"/>
+  <line x1="4.8" y1="-36.6" x2="4.8" y2="-39.6" stroke="#c9cfd8" stroke-width="8.5" stroke-linecap="round"/>
+  <polygon points="-21.7,-17.6 -19.0,-16.0 -19.0,-37.0 -21.7,-38.6" fill="#c2c9d3" stroke="#5b6470" stroke-width="0.9" stroke-linejoin="round"/>
+  <polygon points="-26.9,-14.6 -24.1,-13.0 -24.1,-34.0 -26.9,-35.6" fill="#c2c9d3" stroke="#5b6470" stroke-width="0.9" stroke-linejoin="round"/>
+  <polygon points="40.9,6.4 11.1,23.6 11.1,17.6 40.9,0.4" fill="#474f5a" stroke="#5b6470" stroke-width="1.3" stroke-linejoin="round"/>
+  <polygon points="-40.9,-6.4 11.1,23.6 11.1,17.6 -40.9,-12.4" fill="#5b6470" stroke="#5b6470" stroke-width="1.3" stroke-linejoin="round"/>
+  <polygon points="-11.1,-29.6 40.9,0.4 11.1,17.6 -40.9,-12.4" fill="#6d7684" stroke="#5b6470" stroke-width="1.3" stroke-linejoin="round"/>
+  <polygon points="24.1,-3.0 26.9,-1.4 26.9,-22.5 24.1,-24.1" fill="#c2c9d3" stroke="#5b6470" stroke-width="0.9" stroke-linejoin="round"/>
+  <polygon points="19.0,-0.0 21.7,1.6 21.7,-19.5 19.0,-21.1" fill="#c2c9d3" stroke="#5b6470" stroke-width="0.9" stroke-linejoin="round"/>
+  <polygon points="13.8,2.9 16.5,4.5 16.5,-16.5 13.8,-18.1" fill="#c2c9d3" stroke="#5b6470" stroke-width="0.9" stroke-linejoin="round"/>
+  <polygon points="8.6,5.9 11.4,7.5 11.4,-13.5 8.6,-15.1" fill="#c2c9d3" stroke="#5b6470" stroke-width="0.9" stroke-linejoin="round"/>
+  <polygon points="-10.4,-15.3 -11.4,-14.7 -11.4,-23.5 -10.4,-24.1" fill="#1e232a"/>
+  <polygon points="-22.0,-20.8 -11.4,-14.7 -11.4,-23.5 -22.0,-29.7" fill="#2b3038"/>
+  <polygon points="-21.0,-30.3 -10.4,-24.1 -11.4,-23.5 -22.0,-29.7" fill="#3c434e"/>
+  <polygon points="0.9,-3.8 -0.8,-2.8 -0.8,-6.2 0.9,-7.2" fill="#96562a"/>
+  <polygon points="-8.3,-7.1 -0.8,-2.8 -0.8,-6.2 -8.3,-10.5" fill="#c8813c"/>
+  <polygon points="-6.6,-11.5 0.9,-7.2 -0.8,-6.2 -8.3,-10.5" fill="#d99a55"/>
+  </g>
 </svg>
