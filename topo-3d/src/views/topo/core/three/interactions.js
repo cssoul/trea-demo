@@ -44,7 +44,11 @@ class PointerController {
             startAngle: 0,
             moved: false,
             lastRebuild: 0,
-            contextNodeId: null
+            contextNodeId: null,
+            /** 等比缩放锚点：被拖手柄的对角（世界坐标，含设备旋转）、初始对角方向与长度 */
+            anchorGround: null,
+            anchorDir: null,
+            anchorDist: 0
         };
         this._hoverNodeId = null;
         this._lastHoverCheck = 0;
@@ -212,9 +216,31 @@ class PointerController {
         state.lastClientY = event.clientY;
         state.moved = false;
         state.lastRebuild = 0;
+        state.anchorGround = null;
+        state.anchorDist = 0;
         state.startGround = this.scene.scene3d.screenToGround(event.clientX, event.clientY);
         const node = state.nodeId ? this.scene.getNode(state.nodeId) : null;
         state.startNode = node ? { x: node.x, y: node.y, width: node.width, height: node.height, rotate: node.rotate || 0 } : null;
+        // 等比缩放：锚点取被拖手柄的对角（设备局部 -X/-Z 方向，随设备旋转），后续按
+        // "鼠标到锚点距离 / 初始对角距离" 计算缩放比，保证拖向中心缩小、拖离放大
+        if (mode === 'resize' && node && state.startGround) {
+            const start = state.startNode;
+            const signX = handle && handle.endsWith('e') ? 1 : -1;
+            const signZ = handle && handle.endsWith('s') ? 1 : -1;
+            const group = this.scene.deviceMap.get(node.id);
+            if (group) {
+                const halfW = start.width / 2;
+                const halfD = start.height / 2;
+                state.anchorGround = group.localToWorld(new THREE.Vector3(-signX * halfW, 0, -signZ * halfD));
+                state.anchorGround.y = 0;
+            } else {
+                state.anchorGround = new THREE.Vector3(start.x - signX * start.width, 0, start.y - signZ * start.height);
+            }
+            // 初始对角方向（锚点 -> 按下点，地面平面内）与长度
+            state.anchorDir = state.startGround.clone().sub(state.anchorGround).setY(0);
+            state.anchorDist = Math.max(1e-4, state.anchorDir.length());
+            state.anchorDir.divideScalar(state.anchorDist);
+        }
         if (mode === 'rotate' && node && state.startGround) {
             const group = this.scene.deviceMap.get(node.id);
             state.startAngle = this._angleToGroup(group, state.startGround);
@@ -427,8 +453,10 @@ class PointerController {
     /**
      * 缩放设备（四角手柄）。
      *  - 基础元素（母线/直线/矩形框等）按方向自由缩放
-     *  - 设备元素（电池堆/PCS/光伏等）强制等比缩放（对角拖拽量取 max），避免拉伸模型产生破面
-     *    锚点为拖拽的对角：拖哪角，哪角固定不动
+     *  - 设备元素（电池堆/PCS/光伏等）强制等比缩放（径向模型），避免拉伸模型产生破面：
+     *    缩放比 = 鼠标到对角锚点的距离 / 按下时鼠标到锚点的初始距离。
+     *    拖向设备中心（即靠近锚点）单调缩小，拖离单调放大，与拖动路径和速度无关；
+     *    拖过锚点后进入死区（钳制在最小尺寸），不会反向膨胀。
      * @param {PointerEvent} event 事件
      */
     _resizeNode(event) {
@@ -454,17 +482,29 @@ class PointerController {
         let x = start.x;
         let y = start.y;
         if (uniform) {
-            // 等比缩放：取两个方向拖拽量的较大者作为统一比例因子
-            const targetW = Math.max(MIN, start.width + signX * dx);
-            const targetH = Math.max(MIN, start.height + signZ * dz);
-            const scale = Math.max(targetW / start.width, targetH / start.height);
-            width = Math.max(MIN, start.width * scale);
-            height = Math.max(MIN, start.height * scale);
-            // 锚点：被拖拽的对角保持世界位置不动（等轴测下视觉稳定）
-            const ax = signX > 0 ? start.x : start.x + start.width;
-            const az = signZ > 0 ? start.y : start.y + start.height;
-            x = signX > 0 ? ax : ax - width;
-            y = signZ > 0 ? az : az - height;
+            // 等比缩放（轴向投影模型，Figma/Sketch 角点缩放同款）：
+            // 缩放比 = (鼠标-锚点) 在初始对角方向上的投影 / 初始对角长度。
+            // 沿轴线拖向中心 → 投影单调减小 → 单调缩小；垂直于轴线的漂移不影响大小；
+            // 拖过锚点后投影变负 → 钳制在最小尺寸，绝不反向膨胀；无增量积分，甩鼠标也不会跳变。
+            if (!state.anchorGround || !state.anchorDir) return;
+            const offset = ground.clone().sub(state.anchorGround).setY(0);
+            const projection = offset.dot(state.anchorDir);
+            const scale = Math.max(MIN / start.width, MIN / start.height, projection / state.anchorDist);
+            width = start.width * scale;
+            height = start.height * scale;
+            // 锚点（被拖手柄的对角）保持世界位置不动
+            const ax = state.anchorGround.x;
+            const az = state.anchorGround.z;
+            if (signX > 0) {
+                x = ax - width;
+            } else {
+                x = ax;
+            }
+            if (signZ > 0) {
+                y = az - height;
+            } else {
+                y = az;
+            }
         } else {
             if (resizable !== 'vertical') {
                 width = Math.max(MIN, start.width + signX * dx);
