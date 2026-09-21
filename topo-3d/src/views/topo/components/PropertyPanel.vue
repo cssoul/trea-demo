@@ -26,9 +26,10 @@
           <a-form-item label="ID">
             <span class="prop-id mono">{{ node.id }}</span>
           </a-form-item>
-          <a-form-item label="类型">
+          <!-- 类型字段：暂不显示（保留代码便于恢复） -->
+          <!-- <a-form-item label="类型">
             <a-tag :color="typeColor">{{ typeLabel }}</a-tag>
-          </a-form-item>
+          </a-form-item> -->
           <a-form-item v-if="!isBasicType" label="名称">
             <a-input v-model:value="form.text" @input="emitChange('text', form.text)" @change="emitChange('text', form.text)" placeholder="节点名称" />
           </a-form-item>
@@ -45,10 +46,12 @@
           </div>
           <div class="prop-row">
             <a-form-item label="宽度" style="flex:1">
-              <a-input-number v-model:value="form.width" :min="2" @change="emitChange('width', form.width)" style="width: 100%" />
+              <a-input-number v-if="isDeviceNode" v-model:value="form.width" :min="2" @change="emitUniformSize('width', form.width)" style="width: 100%" />
+              <a-input-number v-else v-model:value="form.width" :min="2" @change="emitChange('width', form.width)" style="width: 100%" />
             </a-form-item>
             <a-form-item label="高度" style="flex:1">
-              <a-input-number v-model:value="form.height" :min="2" @change="emitChange('height', form.height)" style="width: 100%" />
+              <a-input-number v-if="isDeviceNode" v-model:value="form.height" :min="2" @change="emitUniformSize('height', form.height)" style="width: 100%" />
+              <a-input-number v-else v-model:value="form.height" :min="2" @change="emitChange('height', form.height)" style="width: 100%" />
             </a-form-item>
           </div>
           <a-form-item label="旋转角度">
@@ -286,6 +289,11 @@ const isBasicType = computed(() => {
   return props.node && ['line', 'busbar', 'rect'].includes(props.node.type)
 })
 
+// 设备元素（非基础图形）：宽高等比缩放
+const isDeviceNode = computed(() => {
+  return props.node && !['line', 'busbar', 'rect', 'text'].includes(props.node.type)
+})
+
 const stackDevices = computed(() => {
   const result = []
   const walk = (list) => {
@@ -365,6 +373,29 @@ function confirmBind() {
 
 function emitChange(key, value) {
   emit('change', { nodeId: props.node.id, key, value })
+}
+// 设备元素宽/高等比联动：改宽度按初始比例联动高度（反之亦然），并保持中心不动
+function emitUniformSize(key, value) {
+  const node = props.node
+  if (!node) return
+  const initW = node.initialWidth || node.width || 1
+  const initH = node.initialHeight || node.height || 1
+  const ratio = initW / initH
+  const v = Math.max(2, Number(value) || 2)
+  const patch = {}
+  if (key === 'width') {
+    patch.width = v
+    patch.height = Math.max(2, Math.round(v / ratio))
+  } else {
+    patch.height = v
+    patch.width = Math.max(2, Math.round(v * ratio))
+  }
+  // 以节点中心为锚点回推左上角，避免缩放时中心漂移
+  const cx = node.x + node.width / 2
+  const cy = node.y + node.height / 2
+  patch.x = Math.round(cx - patch.width / 2)
+  patch.y = Math.round(cy - patch.height / 2)
+  emit('change', { nodeId: node.id, key: '__size__', value: patch })
 }
 function emitStyle(key, value) {
   emit('style-change', { nodeId: props.node.id, key, value })

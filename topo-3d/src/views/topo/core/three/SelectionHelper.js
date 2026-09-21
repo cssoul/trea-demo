@@ -51,14 +51,14 @@ export default class SelectionHelper {
         this.rotateStemGeometry = new THREE.BufferGeometry();
         this.rotateStem = new THREE.Line(this.rotateStemGeometry, MAT.selectionOutline);
         this.group.add(this.rotateStem);
-        this.rotateHandle = new THREE.Mesh(sphereGeo(5, 10), MAT.handlePrimary);
+        this.rotateHandle = new THREE.Mesh(sphereGeo(8.5, 12), MAT.handlePrimary);
         this.rotateHandle.userData.handle = 'rotate';
         this.group.add(this.rotateHandle);
         if (this.editable) this.pickables.push(this.rotateHandle);
 
         // 四角缩放手柄
         this.resizeHandles = RESIZE_HANDLES.map((config) => {
-            const handle = new THREE.Mesh(sphereGeo(5, 10), MAT.handleSecondary);
+            const handle = new THREE.Mesh(sphereGeo(8.5, 12), MAT.handleSecondary);
             handle.userData.handle = config.key;
             this.group.add(handle);
             if (this.editable) this.pickables.push(handle);

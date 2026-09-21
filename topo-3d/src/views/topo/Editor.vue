@@ -113,7 +113,10 @@
       <div class="link-config-form">
         <div class="config-row">
           <span class="config-label">线的粗细</span>
-          <a-input-number v-model:value="linkConfig.strokeWidth" :min="1" :max="6" :step="0.5" addon-after="px" style="width: 140px" />
+          <div class="unit-cell">
+            <a-input-number v-model:value="linkConfig.strokeWidth" :min="1" :max="5" :step="0.5" style="width: 100px" />
+            <span class="unit-suffix mono">px</span>
+          </div>
         </div>
         <div class="config-row">
           <span class="config-label">线默认颜色</span>
@@ -202,6 +205,7 @@ function applyLinkConfig() {
     dischargeColor: linkConfig.dischargeColor
   })
   message.success('连线配置已应用')
+  linkConfig.visible = false
 }
 
 // 撤销/重做
@@ -395,7 +399,12 @@ function deleteSelected() {
 }
 
 function onNodeChange({ nodeId, key, value }) {
-  canvas.value.updateNode(nodeId, { [key]: value })
+  if (key === '__size__') {
+    // 等比缩放联动：一次提交 width/height/x/y 四个字段
+    canvas.value.updateNode(nodeId, value)
+  } else {
+    canvas.value.updateNode(nodeId, { [key]: value })
+  }
   const n = canvas.value.getNode(nodeId)
   if (n) selectedNode.value = { ...n }
   pushHistory()
@@ -810,6 +819,18 @@ function onKeydown(e) {
 .config-label {
   font-size: 13px;
   color: var(--text-primary, #2b3440);
+}
+
+.unit-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.unit-suffix {
+  font-size: 12px;
+  color: var(--text-tertiary, #8f99a6);
+  user-select: none;
 }
 
 .color-cell {

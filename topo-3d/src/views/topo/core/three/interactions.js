@@ -329,6 +329,9 @@ class PointerController {
                 break;
             case 'rotate':
                 if (node) {
+                    // 旋转会改变两端出线点方向：结束后用高精度重建相连电缆，确保重新接线
+                    this.scene._refreshLinksOf(node.id, 'high');
+                    this.scene._updateSelectionHelper();
                     this.scene.emit('nodeRotateEnd', { node });
                 }
                 break;
@@ -422,7 +425,10 @@ class PointerController {
     }
 
     /**
-     * 缩放设备（四角手柄，尊重 nodeConfig 的可缩放方向）。
+     * 缩放设备（四角手柄）。
+     *  - 基础元素（母线/直线/矩形框等）按方向自由缩放
+     *  - 设备元素（电池堆/PCS/光伏等）强制等比缩放（对角拖拽量取 max），避免拉伸模型产生破面
+     *    锚点为拖拽的对角：拖哪角，哪角固定不动
      * @param {PointerEvent} event 事件
      */
     _resizeNode(event) {
@@ -440,17 +446,34 @@ class PointerController {
         const signZ = state.handle.endsWith('s') ? 1 : -1;
         const MIN = 20;
 
+        // 等比类型判定：基础元素可自由缩放，其余一律等比
+        const uniform = resizable !== 'both' ? false : !this._isBasicShape(node.type);
+
         let width = start.width;
         let height = start.height;
         let x = start.x;
         let y = start.y;
-        if (resizable !== 'vertical') {
-            width = Math.max(MIN, start.width + signX * dx);
-            if (signX < 0) x = start.x + (start.width - width);
-        }
-        if (resizable !== 'horizontal') {
-            height = Math.max(MIN, start.height + signZ * dz);
-            if (signZ < 0) y = start.y + (start.height - height);
+        if (uniform) {
+            // 等比缩放：取两个方向拖拽量的较大者作为统一比例因子
+            const targetW = Math.max(MIN, start.width + signX * dx);
+            const targetH = Math.max(MIN, start.height + signZ * dz);
+            const scale = Math.max(targetW / start.width, targetH / start.height);
+            width = Math.max(MIN, start.width * scale);
+            height = Math.max(MIN, start.height * scale);
+            // 锚点：被拖拽的对角保持世界位置不动（等轴测下视觉稳定）
+            const ax = signX > 0 ? start.x : start.x + start.width;
+            const az = signZ > 0 ? start.y : start.y + start.height;
+            x = signX > 0 ? ax : ax - width;
+            y = signZ > 0 ? az : az - height;
+        } else {
+            if (resizable !== 'vertical') {
+                width = Math.max(MIN, start.width + signX * dx);
+                if (signX < 0) x = start.x + (start.width - width);
+            }
+            if (resizable !== 'horizontal') {
+                height = Math.max(MIN, start.height + signZ * dz);
+                if (signZ < 0) y = start.y + (start.height - height);
+            }
         }
 
         node.width = width;
@@ -474,6 +497,15 @@ class PointerController {
     }
 
     /**
+     * 是否为基础图形元素（允许非等比缩放）。
+     * @param {string} type 节点类型
+     * @returns {boolean}
+     */
+    _isBasicShape(type) {
+        return type === 'line' || type === 'busbar' || type === 'rect' || type === 'text';
+    }
+
+    /**
      * 旋转设备（围绕设备中心）。
      * @param {PointerEvent} event 事件
      */
@@ -492,6 +524,12 @@ class PointerController {
         node.rotate = ((state.startRotate + delta) % 360 + 360) % 360;
         group.rotation.y = -THREE.MathUtils.degToRad(node.rotate);
         this.scene._updateSelectionHelper();
+        // 旋转过程中电缆实时跟随（低精度限频重建，出线点随朝向变化）
+        const now = performance.now();
+        if (now - state.lastRebuild > REBUILD_INTERVAL) {
+            state.lastRebuild = now;
+            this.scene._refreshLinksOf(node.id, 'low');
+        }
         this.scene.emit('nodeRotate', { node });
     }
 

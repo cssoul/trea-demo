@@ -23,8 +23,8 @@ import { MAT } from './materialLibrary.js';
 import { createFlowMaterial } from './FlowAnimator.js';
 
 /** 管道半径（与 strokeWidth 的映射关系） */
-const RADIUS_MIN = 1.8;
-const RADIUS_MAX = 5;
+const RADIUS_MIN = 1.2;
+const RADIUS_MAX = 8;
 
 /** 质量分级：径向分段与长度分段 */
 const QUALITY = {
@@ -43,13 +43,15 @@ const ISO_RATIO = 1;
 
 /**
  * 依据连线样式计算管道半径。
- * @param {Object} style 连线样式
- * @param {number} [fallbackWidth] 样式缺省时的线宽回退值
+ * 线宽以全局配置为准（每条连线历史 style.strokeWidth 只作样式记录，
+ * 不再覆盖全局设置，保证"连线全局配置→线的粗细"对所有电缆生效）。
+ * @param {Object} style 连线样式（仅兼容保留，读取时忽略）
+ * @param {number} [fallbackWidth] 全局默认线宽
  * @returns {number} 半径
  */
 function radiusOf(style, fallbackWidth) {
-    const width = (style && Number(style.strokeWidth)) || fallbackWidth || 2;
-    return THREE.MathUtils.clamp(width * 1.15, RADIUS_MIN, RADIUS_MAX);
+    const width = Number(fallbackWidth) || 2;
+    return THREE.MathUtils.clamp(width * 1.35, RADIUS_MIN, RADIUS_MAX);
 }
 
 /**
