@@ -48,6 +48,7 @@ class PointerController {
             /** 等比缩放锚点：被拖手柄的对角（世界坐标，含设备旋转）、初始对角方向与长度 */
             anchorGround: null,
             anchorDir: null,
+            anchorPerp: null,
             anchorDist: 0
         };
         this._hoverNodeId = null;
@@ -225,8 +226,11 @@ class PointerController {
         // "鼠标到锚点距离 / 初始对角距离" 计算缩放比，保证拖向中心缩小、拖离放大
         if (mode === 'resize' && node && state.startGround) {
             const start = state.startNode;
-            const signX = handle && handle.endsWith('e') ? 1 : -1;
-            const signZ = handle && handle.endsWith('s') ? 1 : -1;
+            // 手柄键名形如 resize-nw/ne/sw/se：前缀后第 1 位是 n/s（z 向）、第 2 位是 w/e（x 向）。
+            // 注意不能用 endsWith('s') 判断南向——'se'/'ne' 以 'e' 结尾会误判。
+            const dir = typeof handle === 'string' ? handle.replace('resize-', '') : '';
+            const signX = dir.charAt(1) === 'e' ? 1 : -1;
+            const signZ = dir.charAt(0) === 's' ? 1 : -1;
             const group = this.scene.deviceMap.get(node.id);
             if (group) {
                 const halfW = start.width / 2;
@@ -240,6 +244,8 @@ class PointerController {
             state.anchorDir = state.startGround.clone().sub(state.anchorGround).setY(0);
             state.anchorDist = Math.max(1e-4, state.anchorDir.length());
             state.anchorDir.divideScalar(state.anchorDist);
+            // 对角轴的法线方向（地面平面内），供 2D 元素分解横向分量
+            state.anchorPerp = new THREE.Vector3(-state.anchorDir.z, 0, state.anchorDir.x);
         }
         if (mode === 'rotate' && node && state.startGround) {
             const group = this.scene.deviceMap.get(node.id);
@@ -451,12 +457,14 @@ class PointerController {
     }
 
     /**
-     * 缩放设备（四角手柄）。
-     *  - 基础元素（母线/直线/矩形框等）按方向自由缩放
-     *  - 设备元素（电池堆/PCS/光伏等）强制等比缩放（径向模型），避免拉伸模型产生破面：
-     *    缩放比 = 鼠标到对角锚点的距离 / 按下时鼠标到锚点的初始距离。
-     *    拖向设备中心（即靠近锚点）单调缩小，拖离单调放大，与拖动路径和速度无关；
-     *    拖过锚点后进入死区（钳制在最小尺寸），不会反向膨胀。
+     * 缩放节点（四角手柄，PS 自由变换手感：对角锚点钉死，其余三角随边移动）。
+     *  - 2D 面状元素（矩形框/文字）与 3D 设备统一用"对角锚点 + 轴向投影"模型：
+     *    scale = (鼠标-锚点) 在初始对角方向上的投影 / 初始对角长。
+     *    抓手柄往外拖放大，往锚点（中心）方向拖缩小，拖过锚点钳制最小尺寸不反弹；
+     *    每帧绝对定位，甩鼠标不跳变。
+     *  - 区别仅在维度：设备强制等比（宽高同比例，避免拉伸 3D 模型破面）；
+     *    矩形框/文字按 2D 处理——同样比例但可通过属性面板的宽/高输入独立调整。
+     *  - 母线/直线保持原有单轴自由缩放。
      * @param {PointerEvent} event 事件
      */
     _resizeNode(event) {
@@ -465,47 +473,51 @@ class PointerController {
         if (!node || !state.startGround || !state.handle) return;
         const ground = this.scene.scene3d.screenToGround(event.clientX, event.clientY);
         if (!ground) return;
-        const config = NODE_TYPES[node.type] || {};
-        const resizable = config.resizable || 'both';
-        const dx = ground.x - state.startGround.x;
-        const dz = ground.z - state.startGround.z;
         const start = state.startNode;
-        const signX = state.handle.endsWith('e') ? 1 : -1;
-        const signZ = state.handle.endsWith('s') ? 1 : -1;
+        // 与 _begin 一致：按 resize- 前缀后第 1 位(n/s)、第 2 位(w/e) 解析方向，
+        // 不能用 endsWith('s')——'se'/'ne' 以 'e' 结尾会被误判成北向
+        const dir = typeof state.handle === 'string' ? state.handle.replace('resize-', '') : '';
+        const signX = dir.charAt(1) === 'e' ? 1 : -1;
+        const signZ = dir.charAt(0) === 's' ? 1 : -1;
         const MIN = 20;
 
-        // 等比类型判定：基础元素可自由缩放，其余一律等比
-        const uniform = resizable !== 'both' ? false : !this._isBasicShape(node.type);
+        // 类型判定：2D 面状元素直接映射鼠标位置；其余（设备）等比投影
+        const planar = this._isBasicShape(node.type) && (node.type === 'rect' || node.type === 'text');
+        const uniform = !planar && !this._isBasicShape(node.type);
 
         let width = start.width;
         let height = start.height;
         let x = start.x;
         let y = start.y;
-        if (uniform) {
-            // 等比缩放（轴向投影模型，Figma/Sketch 角点缩放同款）：
-            // 缩放比 = (鼠标-锚点) 在初始对角方向上的投影 / 初始对角长度。
-            // 沿轴线拖向中心 → 投影单调减小 → 单调缩小；垂直于轴线的漂移不影响大小；
-            // 拖过锚点后投影变负 → 钳制在最小尺寸，绝不反向膨胀；无增量积分，甩鼠标也不会跳变。
-            if (!state.anchorGround || !state.anchorDir) return;
-            const offset = ground.clone().sub(state.anchorGround).setY(0);
-            const projection = offset.dot(state.anchorDir);
-            const scale = Math.max(MIN / start.width, MIN / start.height, projection / state.anchorDist);
+        // 锚点（被拖手柄的对角）世界坐标——全部类型共用，保持钉死不动
+        const anchor = state.anchorGround;
+        if (planar) {
+            // PS 自由变换（2D 面状元素）：对角锚点钉死，沿"锚点→手柄"对角轴的投影
+            // 决定缩放比（屏幕上往外拖放大、往锚点方向拖缩小、拖过锚点钳最小值不反弹）。
+            // 等轴测下屏幕方向与地面轴呈 45°，投影模型天然把任意方向的拖拽单调映射到尺寸。
+            if (!state.anchorDir) return;
+            const offset = ground.clone().sub(anchor).setY(0);
+            const along = Math.max(0, offset.dot(state.anchorDir));
+            const s = Math.max(MIN / start.width, MIN / start.height, along / state.anchorDist);
+            width = start.width * s;
+            height = start.height * s;
+            x = signX > 0 ? anchor.x : anchor.x - width;
+            y = signZ > 0 ? anchor.z : anchor.z - height;
+        } else if (uniform) {
+            // 等比（设备）：轴向投影比例模型
+            if (!state.anchorDir) return;
+            const offset = ground.clone().sub(anchor).setY(0);
+            const scale = Math.max(MIN / start.width, MIN / start.height, offset.dot(state.anchorDir) / state.anchorDist);
             width = start.width * scale;
             height = start.height * scale;
-            // 锚点（被拖手柄的对角）保持世界位置不动
-            const ax = state.anchorGround.x;
-            const az = state.anchorGround.z;
-            if (signX > 0) {
-                x = ax - width;
-            } else {
-                x = ax;
-            }
-            if (signZ > 0) {
-                y = az - height;
-            } else {
-                y = az;
-            }
+            x = signX > 0 ? anchor.x - width : anchor.x;
+            y = signZ > 0 ? anchor.z - height : anchor.z;
         } else {
+            // 其余基础图形（母线/直线）：保持原有单轴/双轴自由缩放逻辑
+            const config = NODE_TYPES[node.type] || {};
+            const resizable = config.resizable || 'both';
+            const dx = ground.x - state.startGround.x;
+            const dz = ground.z - state.startGround.z;
             if (resizable !== 'vertical') {
                 width = Math.max(MIN, start.width + signX * dx);
                 if (signX < 0) x = start.x + (start.width - width);

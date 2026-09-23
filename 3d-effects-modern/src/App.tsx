@@ -115,7 +115,7 @@ export default function App() {
         <time>{(progress * DURATION).toFixed(1)} / {DURATION} S</time>
       </div>
 
-      {!ready && <div className="scene-loading">起吊 · 建造中</div>}
+      {!ready && <div className="scene-loading">杭州大厦 · 建造中</div>}
     </div>
   </main>;
 }

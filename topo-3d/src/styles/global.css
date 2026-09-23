@@ -235,8 +235,6 @@ body {
 
 .ant-slider .ant-slider-handle {
   background: #0a3258 !important;
-  border: 2px solid var(--accent-cyan) !important;
-  box-shadow: 0 0 8px var(--accent-cyan-glow) !important;
 }
 
 .ant-slider .ant-slider-handle::after {
