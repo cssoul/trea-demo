@@ -2,7 +2,7 @@
  * SceneManager - Three.js 场景管理器
  *
  * 职责：
- *  - 创建 WebGL 渲染器、场景、等轴测（Isometric）正交相机与光照体系
+ *  - 创建 WebGL 渲染器、场景、等轴测相机（正交 / 轻度透视双模式可切换）与光照体系
  *  - 搭建"微缩沙盘"地面：浅色圆角底盘 + 柔和网格 + 地面接触阴影
  *  - 维护分层容器（设备层 / 电缆层 / 覆盖层），供拓扑内容挂载
  *  - 提供相机控制：缩放、平移、环绕（方位角/俯仰角受限）、自适应取景
@@ -31,6 +31,17 @@ const DEFAULT_VIEW = {
     groundPlaneSize: 80000
 };
 
+/** 投影模式：orthographic 正交（等轴测图纸感）/ perspective 轻度透视（近大远小） */
+export const PROJECTION_MODES = {
+    ORTHOGRAPHIC: 'orthographic',
+    PERSPECTIVE: 'perspective'
+};
+
+/** 轻度透视视场角（°）：小 FOV + 远机位，保留等轴测构图的同时获得真实纵深 */
+const PERSPECTIVE_FOV = 20;
+/** 轻度透视远裁面：覆盖最大缩放时机位距离（约 15000）+ 场景纵深 */
+const PERSPECTIVE_FAR = 80000;
+
 export default class SceneManager {
     /**
      * @param {HTMLElement} container 画布容器
@@ -51,6 +62,8 @@ export default class SceneManager {
         this.azimuth = this.view.azimuth;
         this.polar = this.view.polar;
         this.viewSize = this.view.viewSize;
+        /** 当前投影模式：'orthographic' 正交 | 'perspective' 轻度透视 */
+        this.projection = options.projection || PROJECTION_MODES.ORTHOGRAPHIC;
 
         // 帧回调与状态
         this._frameCallbacks = new Set();
@@ -142,13 +155,12 @@ export default class SceneManager {
         this.scene.add(this.layers.devices, this.layers.cables, this.layers.overlay);
     }
 
-    /** 初始化等轴测正交相机 */
+    /** 初始化相机：同时创建正交与轻度透视两套相机，按 projection 配置择一启用 */
     _initCamera() {
-        const { width, height } = this._getContainerSize();
-        const aspect = width / height;
-        const halfH = this.viewSize / 2;
-        const halfW = halfH * aspect;
-        this.camera = new THREE.OrthographicCamera(-halfW, halfW, halfH, -halfH, 1, 40000);
+        this._orthoCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 40000);
+        this._perspCamera = new THREE.PerspectiveCamera(PERSPECTIVE_FOV, 1, 1, PERSPECTIVE_FAR);
+        this.camera = this.projection === PROJECTION_MODES.PERSPECTIVE ? this._perspCamera : this._orthoCamera;
+        this._applyProjection();
         this._updateCameraPose();
     }
 
@@ -453,6 +465,25 @@ export default class SceneManager {
         const needByX = (maxX * 2) / scale / aspect;
         this.viewSize = this._clampViewSize(Math.max(needByY, needByX));
         this._applyProjection();
+        // 轻度透视：近角点在屏幕上占比更大，正交估算会偏小；
+        // 按"视深比"（机位距离/角点视深）迭代校正角点所需可视范围，两轮足够收敛
+        if (this.projection === PROJECTION_MODES.PERSPECTIVE) {
+            for (let i = 0; i < 2; i++) {
+                const distance = this._perspectiveDistance();
+                let needY = 1;
+                let needX = 1;
+                corners.forEach((corner) => {
+                    const p = corner.clone().applyMatrix4(viewMatrix);
+                    const depth = Math.max(1e-3, -p.z);
+                    needY = Math.max(needY, (Math.abs(p.y) * distance / depth * 2) / scale);
+                    needX = Math.max(needX, (Math.abs(p.x) * distance / depth * 2) / scale / aspect);
+                });
+                this.viewSize = this._clampViewSize(Math.max(needY, needX));
+                this._applyProjection();
+                this.camera.updateMatrixWorld();
+                viewMatrix.copy(this.camera.matrixWorld).invert();
+            }
+        }
     }
 
     /**
@@ -466,31 +497,67 @@ export default class SceneManager {
 
     // ==================== 相机控制 ====================
 
-    /** 依据球坐标更新相机位置与朝向 */
+    /** 依据球坐标更新相机位置与朝向（透视模式下机位距离随 viewSize 动态换算） */
     _updateCameraPose() {
         const az = THREE.MathUtils.degToRad(this.azimuth);
         const po = THREE.MathUtils.degToRad(this.polar);
-        const radius = Math.cos(po) * this.view.distance;
+        const distance = this.projection === PROJECTION_MODES.PERSPECTIVE
+            ? this._perspectiveDistance()
+            : this.view.distance;
+        const radius = Math.cos(po) * distance;
         this.camera.position.set(
             this.target.x + radius * Math.cos(az),
-            this.target.y + Math.sin(po) * this.view.distance,
+            this.target.y + Math.sin(po) * distance,
             this.target.z + radius * Math.sin(az)
         );
         this.camera.lookAt(this.target);
         this.camera.updateMatrixWorld();
     }
 
-    /** 依据 viewSize 与容器宽高比更新正交视锥 */
+    /**
+     * 轻度透视机位距离：保证 target 平面处的垂直可视范围恰为 viewSize
+     * （与正交 viewSize 同一语义，缩放/平移/取景逻辑得以共用）。
+     * @returns {number} 相机到 target 的距离
+     */
+    _perspectiveDistance() {
+        return (this.viewSize / 2) / Math.tan(THREE.MathUtils.degToRad(PERSPECTIVE_FOV / 2));
+    }
+
+    /**
+     * 切换投影模式（正交 / 轻度透视）。方位角、俯仰角、target、viewSize 全部保留，
+     * 仅替换相机对象与视锥/机位计算方式。
+     * @param {'orthographic'|'perspective'} mode 投影模式
+     */
+    setProjection(mode) {
+        if (mode !== PROJECTION_MODES.ORTHOGRAPHIC && mode !== PROJECTION_MODES.PERSPECTIVE) return;
+        if (mode === this.projection) return;
+        this.projection = mode;
+        this.camera = mode === PROJECTION_MODES.PERSPECTIVE ? this._perspCamera : this._orthoCamera;
+        this._applyProjection();
+        this._updateCameraPose();
+        this._requestGroundUpdate();
+    }
+
+    /** 依据 viewSize 与容器宽高比更新当前相机的投影参数 */
     _applyProjection() {
         const { width, height } = this._getContainerSize();
         const aspect = width / height;
-        const halfH = this.viewSize / 2;
-        const halfW = halfH * aspect;
-        this.camera.left = -halfW;
-        this.camera.right = halfW;
-        this.camera.top = halfH;
-        this.camera.bottom = -halfH;
-        this.camera.updateProjectionMatrix();
+        if (this.projection === PROJECTION_MODES.PERSPECTIVE) {
+            const cam = this._perspCamera;
+            cam.aspect = aspect;
+            cam.updateProjectionMatrix();
+            // 透视模式下 viewSize 变化会改变机位距离，需同步位姿
+            this._updateCameraPose();
+        } else {
+            const halfH = this.viewSize / 2;
+            const halfW = halfH * aspect;
+            const cam = this._orthoCamera;
+            cam.left = -halfW;
+            cam.right = halfW;
+            cam.top = halfH;
+            cam.bottom = -halfH;
+            cam.updateProjectionMatrix();
+        }
     }
 
     /**

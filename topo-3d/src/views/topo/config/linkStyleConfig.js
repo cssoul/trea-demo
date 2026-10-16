@@ -1,23 +1,25 @@
 /**
- * linkStyleConfig - 连线全局样式配置（统一配置入口）
+ * linkStyleConfig - 全局配置（统一配置入口）
  *
  * 字段：
  *  - strokeWidth     连线粗细（px），全局生效，渲染管道半径按此映射
  *  - color           线缆默认颜色（基管材质色，同时作为新建连线的 stroke）
  *  - chargeColor     充电能量流光颜色（电流流向吸收功率设备）
  *  - dischargeColor  放电能量流光颜色（电流流向输出功率设备）
+ *  - projection      画布投影方式：'orthographic' 正交（等轴测）| 'perspective' 轻度透视
  *
  * 读写入口：
- *  - 编辑器工具栏"连线配置"弹窗 -> TopoScene.setLinkStyleConfig（即时应用并持久化）
+ *  - 编辑器工具栏"全局配置"弹窗 -> TopoScene.setLinkStyleConfig / setProjection（即时应用并持久化）
  *  - 预览模式 TopoScene 构造时自动 loadLinkStyleConfig，编辑/预览两侧表现一致
  */
 
-/** 默认连线样式（粗细 2px、默认黑、充电绿、放电橙黄） */
+/** 默认全局配置（粗细 2px、默认黑、充电绿、放电橙黄、正交投影） */
 export const DEFAULT_LINK_STYLE = {
     strokeWidth: 2,
     color: '#000000',
     chargeColor: '#00c853',
-    dischargeColor: '#ffb020'
+    dischargeColor: '#ffb020',
+    projection: 'orthographic'
 };
 
 /** 旧版放电色（历史默认值）：读取到已持久化的旧值时迁移为新默认 */

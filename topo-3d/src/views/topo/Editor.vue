@@ -64,7 +64,7 @@
 
         <div class="canvas-corner bottom-right">
           <div class="mini-stats mono">
-            <span class="stat-dot ok"></span>等轴测立体视图
+            <span class="stat-dot ok"></span>{{ projectionLabel }}
           </div>
         </div>
       </main>
@@ -100,10 +100,10 @@
       @close="ctxMenu.visible = false"
     />
 
-    <!-- 连线全局配置弹窗 -->
+    <!-- 全局配置弹窗（连线样式 + 画布投影） -->
     <a-modal
       v-model:open="linkConfig.visible"
-      title="连线全局配置"
+      title="全局配置"
       :width="430"
       centered
       ok-text="应用"
@@ -111,6 +111,15 @@
       @ok="applyLinkConfig"
     >
       <div class="link-config-form">
+        <div class="config-row">
+          <span class="config-label">投影方式</span>
+          <div class="unit-cell">
+            <a-radio-group v-model:value="linkConfig.projection" size="small">
+              <a-radio-button value="orthographic">正交投影</a-radio-button>
+              <a-radio-button value="perspective">轻度透视</a-radio-button>
+            </a-radio-group>
+          </div>
+        </div>
         <div class="config-row">
           <span class="config-label">线的粗细</span>
           <div class="unit-cell">
@@ -179,14 +188,21 @@ const ctxMenu = reactive({
   node: null
 })
 
-// 连线全局配置弹窗（打开时从画布读取当前值）
+// 全局配置弹窗（打开时从画布读取当前值；projection 为画布投影方式）
 const linkConfig = reactive({
   visible: false,
   strokeWidth: 2,
   color: '#000000',
   chargeColor: '#00c853',
-  dischargeColor: '#ffb020'
+  dischargeColor: '#ffb020',
+  projection: 'orthographic'
 })
+
+// 右下角状态徽标随投影方式联动
+const projectionMode = ref('orthographic')
+const projectionLabel = computed(() =>
+  projectionMode.value === 'perspective' ? '轻度透视立体视图' : '等轴测立体视图'
+)
 
 function openLinkConfig() {
   const cfg = canvas.value ? canvas.value.getLinkStyleConfig() : {}
@@ -194,6 +210,7 @@ function openLinkConfig() {
   linkConfig.color = cfg.color || '#000000'
   linkConfig.chargeColor = cfg.chargeColor || '#00c853'
   linkConfig.dischargeColor = cfg.dischargeColor || '#ffb020'
+  linkConfig.projection = cfg.projection || 'orthographic'
   linkConfig.visible = true
 }
 
@@ -204,7 +221,12 @@ function applyLinkConfig() {
     chargeColor: linkConfig.chargeColor,
     dischargeColor: linkConfig.dischargeColor
   })
-  message.success('连线配置已应用')
+  // 投影方式切换（正交 / 轻度透视），随全局配置持久化
+  if (linkConfig.projection !== projectionMode.value) {
+    canvas.value.setProjection(linkConfig.projection)
+    projectionMode.value = linkConfig.projection
+  }
+  message.success('全局配置已应用')
   linkConfig.visible = false
 }
 
@@ -249,6 +271,8 @@ onBeforeUnmount(() => {
 
 function initCanvas() {
   canvas.value = new TopoScene(canvasRef.value, { mode: 'editor' })
+  // 同步持久化的投影方式到右下角状态徽标
+  projectionMode.value = canvas.value.getProjection()
   dataBinder.value = new DataBinder([], deviceList)
 }
 

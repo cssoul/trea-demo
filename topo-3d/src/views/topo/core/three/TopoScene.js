@@ -75,6 +75,8 @@ export default class TopoScene {
 
         // === 三维场景 ===
         this.scene3d = new SceneManager(container, { viewSize: options.viewSize });
+        // 应用持久化的投影方式（'orthographic' 正交 | 'perspective' 轻度透视）
+        this.scene3d.setProjection(this.linkStyleConfig.projection);
         this.flowAnimator = new FlowAnimator();
         this.flowAnimator.attach(this.scene3d);
 
@@ -411,6 +413,31 @@ export default class TopoScene {
      */
     getLinkStyleConfig() {
         return { ...this.linkStyleConfig };
+    }
+
+    // ==================== 投影方式配置 ====================
+
+    /**
+     * 切换画布投影方式（正交 / 轻度透视）并持久化。
+     * @param {'orthographic'|'perspective'} mode 投影模式
+     * @param {Object} [options] 可选项
+     * @param {boolean} [options.persist=true] 是否持久化到 localStorage
+     */
+    setProjection(mode, options = {}) {
+        const persist = options.persist !== false;
+        if (mode !== 'orthographic' && mode !== 'perspective') return;
+        this.linkStyleConfig.projection = mode;
+        this.scene3d.setProjection(mode);
+        this.emit('projectionChanged', { projection: mode });
+        if (persist) saveLinkStyleConfig(this.linkStyleConfig);
+    }
+
+    /**
+     * 读取当前投影方式。
+     * @returns {'orthographic'|'perspective'}
+     */
+    getProjection() {
+        return this.scene3d.projection;
     }
 
     /**

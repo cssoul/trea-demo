@@ -20,6 +20,8 @@ import { NODE_TYPES } from '../../config/nodeConfig.js';
 const CLICK_THRESHOLD = 5;
 /** 拖拽过程中重建模型的最小间隔（毫秒），避免过高频重建造成卡顿 */
 const REBUILD_INTERVAL = 70;
+/** 地面法线：设备局部偏移按旋转角换算到世界方向时使用的旋转轴 */
+const UP_AXIS = new THREE.Vector3(0, 1, 0);
 
 class PointerController {
     /**
@@ -238,7 +240,14 @@ class PointerController {
                 state.anchorGround = group.localToWorld(new THREE.Vector3(-signX * halfW, 0, -signZ * halfD));
                 state.anchorGround.y = 0;
             } else {
-                state.anchorGround = new THREE.Vector3(start.x - signX * start.width, 0, start.y - signZ * start.height);
+                // 兜底（deviceMap 正常必有 group）：按节点中心 + 旋转角换算手柄对角的世界坐标
+                const offset = new THREE.Vector3((-signX * start.width) / 2, 0, (-signZ * start.height) / 2);
+                offset.applyAxisAngle(UP_AXIS, -THREE.MathUtils.degToRad(start.rotate || 0));
+                state.anchorGround = new THREE.Vector3(
+                    start.x + start.width / 2 + offset.x,
+                    0,
+                    start.y + start.height / 2 + offset.z
+                );
             }
             // 初始对角方向（锚点 -> 按下点，地面平面内）与长度
             state.anchorDir = state.startGround.clone().sub(state.anchorGround).setY(0);
@@ -501,8 +510,6 @@ class PointerController {
             const s = Math.max(MIN / start.width, MIN / start.height, along / state.anchorDist);
             width = start.width * s;
             height = start.height * s;
-            x = signX > 0 ? anchor.x : anchor.x - width;
-            y = signZ > 0 ? anchor.z : anchor.z - height;
         } else if (uniform) {
             // 等比（设备）：轴向投影比例模型
             if (!state.anchorDir) return;
@@ -510,8 +517,6 @@ class PointerController {
             const scale = Math.max(MIN / start.width, MIN / start.height, offset.dot(state.anchorDir) / state.anchorDist);
             width = start.width * scale;
             height = start.height * scale;
-            x = signX > 0 ? anchor.x - width : anchor.x;
-            y = signZ > 0 ? anchor.z - height : anchor.z;
         } else {
             // 其余基础图形（母线/直线）：保持原有单轴/双轴自由缩放逻辑
             const config = NODE_TYPES[node.type] || {};
@@ -526,6 +531,16 @@ class PointerController {
                 height = Math.max(MIN, start.height + signZ * dz);
                 if (signZ < 0) y = start.y + (start.height - height);
             }
+        }
+
+        // 2D 面状元素与设备：锚点（被拖手柄的对角）钉死。锚点是"当前旋转下"的世界坐标，
+        // 反推左上角时必须按旋转角还原对角偏移方向；若按世界轴直接加减半个宽高，
+        // 旋转后锚点与新矩形对角不重合，节点会随缩放整体平移。
+        // 母线/直线维持上方分支内按鼠标位移增量的单轴自由缩放。
+        if (planar || uniform) {
+            const origin = this._anchorToOrigin(anchor, width, height, signX, signZ, start.rotate);
+            x = origin.x;
+            y = origin.y;
         }
 
         node.width = width;
@@ -546,6 +561,29 @@ class PointerController {
             this._rebuildDevice(node, true);
             this.scene._refreshLinksOf(node.id, 'low');
         }
+    }
+
+    /**
+     * 由锚点世界坐标反推节点左上角坐标（考虑节点旋转）。
+     *
+     * 锚点是被拖手柄的对角在"当前旋转"下的世界位置：anchor = 中心 + R(-rotate) * 对角本地偏移。
+     * 缩放要求锚点保持不动，因此新中心 = anchor - R(-rotate) * 新对角偏移，
+     * 再换算回轴对齐矩形左上角（拓扑坐标），保证旋转后缩放不产生整体位移。
+     * @param {THREE.Vector3} anchor 锚点世界坐标（地面平面，Y=0）
+     * @param {number} width 新宽度
+     * @param {number} height 新高度
+     * @param {number} signX 手柄横向符号（e=1 / w=-1）
+     * @param {number} signZ 手柄纵向符号（s=1 / n=-1）
+     * @param {number} rotate 节点旋转角（度）
+     * @returns {{x: number, y: number}} 节点左上角坐标
+     */
+    _anchorToOrigin(anchor, width, height, signX, signZ, rotate) {
+        const offset = new THREE.Vector3((-signX * width) / 2, 0, (-signZ * height) / 2);
+        offset.applyAxisAngle(UP_AXIS, -THREE.MathUtils.degToRad(Number(rotate) || 0));
+        return {
+            x: anchor.x - offset.x - width / 2,
+            y: anchor.z - offset.z - height / 2
+        };
     }
 
     /**
